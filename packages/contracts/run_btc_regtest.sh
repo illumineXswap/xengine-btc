@@ -1,0 +1,1 @@
+bitcoind -regtest -server -rest -listen -maxtxfee=0.8 -fallbackfee=0.00000001 -rpcallowip=0.0.0.0/0 -rpcuser=user -rpcpassword=user -txindex -rpcworkqueue=100

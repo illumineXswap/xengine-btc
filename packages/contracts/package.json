@@ -1,0 +1,33 @@
+{
+  "name": "@illuminex/contracts",
+  "private": true,
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@oasisprotocol/sapphire-contracts": "^0.2.4",
+    "@oasisprotocol/sapphire-hardhat": "^2.16.1",
+    "@types/node-fetch": "^2.6.6",
+    "@types/secp256k1": "^4.0.6",
+    "@types/vorpal": "^1.12.2",
+    "hardhat": "^2.17.3",
+    "hardhat-abi-exporter": "^2.10.1",
+    "hardhat-deploy": "^0.11.45"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.3",
+    "bech32": "^2.0.0",
+    "bs58": "^5.0.0",
+    "dotenv": "^16.3.1",
+    "merkletreejs": "^0.3.11",
+    "node-fetch": "^2.7.0",
+    "secp256k1": "^5.0.0",
+    "vorpal": "^1.12.0"
+  },
+  "scripts": {
+    "generate:abi": "hardhat export-abi",
+    "build": "hardhat compile"
+  },
+  "exports": {
+    "./deployments.json": "./deployments.json"
+  },
+  "types": "./types.d.ts"
+}

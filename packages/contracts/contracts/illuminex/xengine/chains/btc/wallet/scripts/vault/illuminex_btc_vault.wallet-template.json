@@ -1,0 +1,51 @@
+{
+  "$schema": "https://ide.bitauth.com/authentication-template-v0.schema.json",
+  "description": "illumineX Bitcoin Vault contract for contract-sided and off-chain witness sided lock",
+  "name": "illumineX BTC Vault",
+  "entities": {
+    "contract_side": {
+      "description": "The individual who can spend from this wallet.",
+      "name": "Contract side",
+      "scripts": [
+        "lock",
+        "unlock"
+      ],
+      "variables": {
+        "key": {
+          "description": "The private key that controls this wallet.",
+          "name": "Key",
+          "type": "HdKey"
+        }
+      }
+    },
+    "offchain-signer": {
+      "description": "",
+      "name": "offchain-signer",
+      "variables": {
+        "offchain-signer_hdkey": {
+          "description": "",
+          "name": "offchain-signer's HD Key",
+          "type": "HdKey"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "unlock": {
+      "name": "Unlock",
+      "script": "OP_0\n<offchain-signer_hdkey.signature.all_outputs>\n<key.signature.all_outputs>\n<key.public_key>",
+      "unlocks": "lock"
+    },
+    "lock": {
+      "lockingType": "p2sh20",
+      "name": "P2PKH Lock",
+      "script": "// Check contract required signature\nOP_DUP\nOP_HASH160 <$(<key.public_key> OP_HASH160)> OP_EQUALVERIFY\nOP_CHECKSIGVERIFY\n\n// Check off-chain signatures\nOP_1\n<offchain-signer_hdkey.public_key>\nOP_1\nOP_CHECKMULTISIG"
+    }
+  },
+  "supported": [
+    "BCH_2020_05",
+    "BCH_2021_05",
+    "BCH_2022_05"
+  ],
+  "version": 0
+}

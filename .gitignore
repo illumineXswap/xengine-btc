@@ -1,0 +1,11 @@
+node_modules/
+packages/**/node_modules/
+packages/**/.env
+.vscode/
+.idea/
+
+infra/dumps/
+
+packages/contracts/artifacts
+packages/contracts/cache
+packages/contracts/typechain-types

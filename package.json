@@ -1,0 +1,26 @@
+{
+  "name": "illuminati-monorepo",
+  "version": "0.1.0",
+  "description": "",
+  "workspaces": [
+    "packages/contracts",
+    "packages/backend",
+    "packages/frontend",
+    "packages/price-keeper"
+  ],
+  "engines": {
+    "node": "^18,^20"
+  },
+  "author": "AWeishaupt",
+  "license": "ISC",
+  "devDependencies": {
+    "@commitlint/cli": "^17.7.1",
+    "@commitlint/config-conventional": "^17.7.0",
+    "@commitlint/types": "^17.4.4",
+    "commitlint": "^17.7.1",
+    "husky": "^8.0.3"
+  },
+  "scripts": {
+    "prepare": "husky install"
+  }
+}
