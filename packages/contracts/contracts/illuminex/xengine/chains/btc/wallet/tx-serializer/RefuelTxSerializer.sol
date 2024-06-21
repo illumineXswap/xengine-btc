@@ -51,7 +51,7 @@ contract RefuelTxSerializer is AbstractTxSerializer {
     // Do nothing...
     function _addChangeOutput(uint64 _netFee) internal virtual override {}
 
-    function copyParentInputs(uint256 count) public {
+    function copyParentInputs(uint256 count) public onlyRelayer {
         require(!_isParentCopied(), "PAC");
 
         BitcoinUtils.BitcoinTransaction memory _parentTx = derivedFrom.getBitcoinTransaction();
@@ -66,7 +66,7 @@ contract RefuelTxSerializer is AbstractTxSerializer {
         }
     }
 
-    function enrichOutgoingTransaction(bytes32[] memory inputsToSpend) public override {
+    function enrichOutgoingTransaction(bytes32[] memory inputsToSpend) public override onlyRelayer {
         super.enrichOutgoingTransaction(inputsToSpend);
         require(_skeleton.totalValueImported > derivedFrom.getTotalValueImported(), "NEV");
     }

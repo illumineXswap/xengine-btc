@@ -8,8 +8,9 @@ import "./BitcoinUtils.sol";
 import "./interfaces/IBitcoinTransactionsVerifier.sol";
 import "./interfaces/IBitcoinDepositProcessingCallback.sol";
 import "./interfaces/IBitcoinNetwork.sol";
+import "./AllowedRelayers.sol";
 
-contract BitcoinProver is Ownable, TEERollup, IBitcoinNetwork {
+contract BitcoinProver is Ownable, TEERollup, IBitcoinNetwork, AllowedRelayers {
     using Buffer for Buffer.BufferIO;
 
     enum ProvingAction {
@@ -259,7 +260,7 @@ contract BitcoinProver is Ownable, TEERollup, IBitcoinNetwork {
         TEERollup.FullComputationsProof memory txProof,
         IBitcoinDepositProcessingCallback callback,
         bytes memory _data
-    ) public {
+    ) public onlyRelayer {
         require(verifyComputations(txProof), "Invalid proof");
 
         (uint8 actionCode, IBitcoinDepositProcessingCallback.Transaction memory _tx) = abi.decode(
@@ -320,7 +321,7 @@ contract BitcoinProver is Ownable, TEERollup, IBitcoinNetwork {
         );
     }
 
-    function ackAnchorBlock(TEERollup.FullComputationsProof calldata newAnchorProof) public {
+    function ackAnchorBlock(TEERollup.FullComputationsProof calldata newAnchorProof) public onlyRelayer {
         require(verifyComputations(newAnchorProof), "Invalid proof");
 
         (uint8 actionCode, AnchorBlock memory newAnchorBlock) = abi.decode(

@@ -16,10 +16,19 @@ import "./scripts/ScriptP2WPKH.sol";
 import "./scripts/ScriptP2WSH.sol";
 import "./OutgoingQueue.sol";
 
+import "../AllowedRelayers.sol";
+
 import "./tx-serializer/factories/TxSerializerFactory.sol";
 import "./tx-serializer/factories/RefuelTxSerializerFactory.sol";
 
-contract VaultBitcoinWallet is BitcoinAbstractWallet, RotatingKeys, Ownable, ITxInputsStorage, ITxSecretsStorage {
+contract VaultBitcoinWallet is
+BitcoinAbstractWallet,
+RotatingKeys,
+Ownable,
+ITxInputsStorage,
+ITxSecretsStorage,
+AllowedRelayers
+{
     using Buffer for Buffer.BufferIO;
 
     enum VaultTransactionType {
@@ -103,9 +112,6 @@ contract VaultBitcoinWallet is BitcoinAbstractWallet, RotatingKeys, Ownable, ITx
 
     uint64 public minWithdrawalLimit = 700;
 
-    mapping(address => bool) public relayers;
-    bool public relayersWhitelistEnabled;
-
     TxSerializerFactory public immutable serializerFactory;
     RefuelTxSerializerFactory public immutable refuelSerializerFactory;
 
@@ -135,19 +141,8 @@ contract VaultBitcoinWallet is BitcoinAbstractWallet, RotatingKeys, Ownable, ITx
 
         feeSetter = msg.sender;
 
-        relayers[msg.sender] = true;
-        relayersWhitelistEnabled = true;
-
         serializerFactory = _serializerFactory;
         refuelSerializerFactory = _refuelSerializerFactory;
-    }
-
-    modifier onlyRelayer() {
-        if (relayersWhitelistEnabled && !relayers[msg.sender]) {
-            revert("NRL");
-        }
-
-        _;
     }
 
     modifier onlyAuthorisedSerializer() {
@@ -157,14 +152,6 @@ contract VaultBitcoinWallet is BitcoinAbstractWallet, RotatingKeys, Ownable, ITx
             refuelSerializerFactory.isDeployedSerializer(msg.sender),
             "Not a serializer");
         _;
-    }
-
-    function toggleRelayersWhitelistEnabled() public onlyOwner {
-        relayersWhitelistEnabled = !relayersWhitelistEnabled;
-    }
-
-    function toggleRelayer(address _relayer) public onlyOwner {
-        relayers[_relayer] = !relayers[_relayer];
     }
 
     function setProtocolFees(uint8 _depositFee, uint8 _withdrawalFee) public onlyOwner {
@@ -292,7 +279,10 @@ contract VaultBitcoinWallet is BitcoinAbstractWallet, RotatingKeys, Ownable, ITx
         OutboundTransaction storage outboundTx = outboundTransactions[_index];
         require(outboundTx.txHash != bytes32(0) && outboundTx.finalisedCandidateHash == bytes32(0), "UOT");
 
-        _refuelSerializers[_index].push(refuelSerializerFactory.createRefuelSerializer(_serializers[_index]));
+        RefuelTxSerializer _sr = refuelSerializerFactory.createRefuelSerializer(_serializers[_index]);
+        _sr.toggleRelayer(msg.sender);
+
+        _refuelSerializers[_index].push(_sr);
         emit RefuelTxStarted(_index, _refuelSerializers[_index].length - 1);
     }
 
@@ -320,13 +310,16 @@ contract VaultBitcoinWallet is BitcoinAbstractWallet, RotatingKeys, Ownable, ITx
         (OutgoingQueue.OutgoingTransfer[] memory _transfers,) = queue.popBufferedTransfersToBatch();
         require(_transfers.length > 0, "NT");
 
-        _serializers[_index] = serializerFactory.createSerializer(
+        TxSerializer _sr = serializerFactory.createSerializer(
             AbstractTxSerializer.FeeConfig({
                 outgoingTransferCost: BYTES_PER_OUTGOING_TRANSFER * satoshiPerByte,
                 incomingTransferCost: BYTES_PER_INCOMING_TRANSFER * satoshiPerByte
             }),
             _transfers
         );
+
+        _serializers[_index] = _sr;
+        _sr.toggleRelayer(msg.sender);
     }
 
     function finaliseOutgoingTxSerializing() public onlyRelayer {
@@ -376,7 +369,7 @@ contract VaultBitcoinWallet is BitcoinAbstractWallet, RotatingKeys, Ownable, ITx
         return _params.isTestnet;
     }
 
-    function withdraw(bytes memory to, uint64 amount, uint64 minReceiveAmount) public {
+    function withdraw(bytes memory to, uint64 amount, uint64 minReceiveAmount, bytes32 idSeed) public {
         uint64 amountAfterNetworkFee = amount - (BYTES_PER_OUTGOING_TRANSFER * satoshiPerByte);
         require(amountAfterNetworkFee >= minWithdrawalLimit, "AFL");
 
@@ -393,10 +386,12 @@ contract VaultBitcoinWallet is BitcoinAbstractWallet, RotatingKeys, Ownable, ITx
             btcToken.mint(owner(), protocolFees);
         }
 
+        bytes32 _transferId = keccak256(abi.encodePacked(idSeed, to, amount));
         queue.push(
             OutgoingQueue.OutgoingTransfer(
                 BitcoinUtils.resolveLockingScript(to, _isTestnet(), workingScriptSet),
-                amountAfterFee
+                amountAfterFee,
+                _transferId
             )
         );
     }

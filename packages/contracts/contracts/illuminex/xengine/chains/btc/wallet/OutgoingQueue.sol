@@ -5,9 +5,11 @@ contract OutgoingQueue {
     struct OutgoingTransfer {
         bytes lockScript;
         uint64 value;
+        bytes32 id;
     }
 
-    event OutgoingTransferCommitted(bytes lockingScript, uint64 value);
+    event OutgoingTransferCommitted(bytes32 indexed id, bytes lockingScript, uint64 value);
+    event OutgoingTransferPopped(bytes32 indexed id);
 
     address public vaultWallet;
     address public immutable initializer;
@@ -32,7 +34,7 @@ contract OutgoingQueue {
         require(msg.sender == vaultWallet);
 
         bufferedTransfers.push(_transfer);
-        emit OutgoingTransferCommitted(_transfer.lockScript, _transfer.value);
+        emit OutgoingTransferCommitted(_transfer.id, _transfer.lockScript, _transfer.value);
     }
 
     function popBufferedTransfersToBatch() public returns (
@@ -43,6 +45,10 @@ contract OutgoingQueue {
 
         (OutgoingQueue.OutgoingTransfer[] memory _transfers, uint256 _sliceIndex) = getBufferedTransfersToBatch();
         require(_transfers.length > 0, "Not enough transfers");
+
+        for (uint i = 0; i < _transfers.length; i++) {
+            emit OutgoingTransferPopped(_transfers[i].id);
+        }
 
         nextBatchTime = block.timestamp + batchingInterval;
         bufferedTransfersCheckpoint += _sliceIndex;

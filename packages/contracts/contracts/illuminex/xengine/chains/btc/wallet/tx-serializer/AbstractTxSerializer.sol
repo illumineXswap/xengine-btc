@@ -11,7 +11,9 @@ import "../../BitcoinUtils.sol";
 import "../scripts/ScriptP2SH.sol";
 import "../scripts/vault/ScriptVault.sol";
 
-abstract contract AbstractTxSerializer {
+import "../../AllowedRelayers.sol";
+
+abstract contract AbstractTxSerializer is AllowedRelayers {
     struct FeeConfig {
         uint64 outgoingTransferCost;
         uint64 incomingTransferCost;
@@ -68,6 +70,8 @@ abstract contract AbstractTxSerializer {
 
         _skeleton.tx.version = bytes4(uint32(1));
         _skeleton.tx.lockTime = uint32(0);
+
+        _toggleRelayer(msg.sender); // disable factory being relayer
     }
 
     function _getKeyPair(bytes32 inputId) internal view returns (bytes memory, bytes memory) {
@@ -133,7 +137,7 @@ abstract contract AbstractTxSerializer {
             + uint64(fees.incomingTransferCost * _skeleton.tx.inputs.length);
     }
 
-    function enrichOutgoingTransaction(bytes32[] memory inputsToSpend) public virtual {
+    function enrichOutgoingTransaction(bytes32[] memory inputsToSpend) public virtual onlyRelayer {
         require(!_skeleton.hasSufficientInputs && _skeleton.initialized, "AHS");
         require(!isFinished(), "AF");
 
@@ -152,7 +156,7 @@ abstract contract AbstractTxSerializer {
         }
     }
 
-    function enrichSigHash(uint256 inputIndex, uint256 count) public virtual {
+    function enrichSigHash(uint256 inputIndex, uint256 count) public virtual onlyRelayer {
         require(_skeleton.sigHashes[inputIndex] == bytes32(0), "AH");
         require(!isFinished(), "AF");
 
@@ -180,7 +184,7 @@ abstract contract AbstractTxSerializer {
         }
     }
 
-    function partiallySignOutgoingTransaction(uint256 count) public virtual {
+    function partiallySignOutgoingTransaction(uint256 count) public virtual onlyRelayer {
         require(
             _skeleton.tx.hash == bytes32(0)
             && _skeleton.initialized
@@ -210,7 +214,7 @@ abstract contract AbstractTxSerializer {
         _skeleton.lastPartiallySignedInput = i;
     }
 
-    function serializeOutgoingTransaction(uint256 count, bytes memory signature) public {
+    function serializeOutgoingTransaction(uint256 count, bytes memory signature) public onlyRelayer {
         require(
             _skeleton.tx.hash == bytes32(0)
             && _skeleton.initialized

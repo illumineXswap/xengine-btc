@@ -26,6 +26,8 @@ contract RefuelTxSerializerFactory is AbstractTxSerializerFactory {
             AbstractTxSerializer.FeeConfig(outgoingTransferCost, incomingTransferCost)
         );
 
+        _serializer.transferOwnership(msg.sender);
+
         isDeployedSerializer[address(_serializer)] = true;
         emit TransactionSerializerCreated(address(_serializer));
     }

@@ -12,7 +12,9 @@ contract TxSerializerFactory is AbstractTxSerializerFactory {
         OutgoingQueue.OutgoingTransfer[] memory _transfers
     ) public returns (TxSerializer _serializer) {
         require(msg.sender == allowedCreator, "NAC");
+
         _serializer = new TxSerializer(secretsStorage, inputsStorage, scriptSet, _fees, _transfers);
+        _serializer.transferOwnership(msg.sender);
 
         isDeployedSerializer[address(_serializer)] = true;
         emit TransactionSerializerCreated(address(_serializer));
