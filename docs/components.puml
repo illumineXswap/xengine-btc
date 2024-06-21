@@ -1,0 +1,31 @@
+@startuml Component diagram
+
+component BTCRelayer as relayer
+
+actor Actor
+
+
+cloud Sapphire {
+    [BitcoinProver] as prover
+    [VaultWallet] as vaultWallet
+    queue "OutgoingQueue" as queue
+    vaultWallet -down-> queue : Saves txs to batch
+    prover -right-> vaultWallet : Proves deposit txs
+}
+
+Actor -down-> vaultWallet : generateOrder()
+Actor -down-> vaultWallet : withdraw()
+
+Actor -down-> relayer : Registers deposit to track
+
+
+
+relayer -left-> prover : Tracks anchor blocks
+relayer -left-> prover : Proves deposit txs
+
+relayer -left-> queue : Manages batches
+relayer -left-> vaultWallet : Generates output txs
+
+
+
+@enduml

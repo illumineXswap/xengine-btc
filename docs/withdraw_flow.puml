@@ -1,0 +1,62 @@
+@startuml Withdraw flow
+
+actor Actor as actor
+participant "VaultWallet" as vaultWallet
+queue "OutgoingQueue" as queue
+entity "Output Relayer" as outputRelayer
+participant "TxSerializer" as serializer
+boundary "Bitcoin" as btc
+
+== Create withdraw ==
+
+actor -> vaultWallet ++ : withdraw(receiver, X pBTC)
+actor <- vaultWallet : Burns X + fee pBTC
+vaultWallet -> queue --++: push(receiver, X pBTC)
+
+== Batch outgoing tx ==
+
+outputRelayer --> queue : Read current size
+outputRelayer -> vaultWallet ++ : startOutgoingTxSerializing()
+vaultWallet -> serializer ** : deploys
+vaultWallet -> serializer : Allow spendInput()
+
+loop for N/M inputs
+outputRelayer -> serializer ++ : enrichOutgoingTransaction(inputIds)
+loop for each input
+serializer -> vaultWallet : spendInput(inputId)
+end
+end
+
+loop for N/M inputs
+outputRelayer -> serializer ++ #gold: enrichSigHash(input, N)
+end
+
+loop for N/M inputs
+outputRelayer -> serializer ++ #blue : partiallySignOutgoingTransaction(N)
+outputRelayer <-- serializer ++ : Listens to sigHashes
+outputRelayer -> outputRelayer : Signs sigHashes
+end
+
+loop for N/M inputs
+outputRelayer -> serializer -- : serializeOutgoingTransaction(signatures)
+deactivate serializer 
+deactivate serializer 
+note over serializer: Closes itself when serialized all inputs
+end
+
+outputRelayer -> vaultWallet ++ #red: finaliseOutgoingTxSerializing()
+vaultWallet --> serializer : getRaw()
+vaultWallet <-- serializer : txHash + tx
+deactivate serializer
+vaultWallet --> outputRelayer : Listens to txHash + tx
+deactivate vaultWallet
+deactivate vaultWallet
+outputRelayer -> btc : Sends tx
+
+' deactivate serializer
+
+
+
+
+
+@enduml

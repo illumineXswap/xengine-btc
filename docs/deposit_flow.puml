@@ -1,0 +1,32 @@
+@startuml Deposit flow
+
+actor actor
+participant "VaultWallet" as vaultWallet
+entity "Input Relayer" as inputRelayer
+participant "BitcoinProver" as btcProver
+boundary "Bitcoin" as btc
+
+== Create deposit order ==
+
+actor --> vaultWallet ++: generateOrder()
+actor <-- vaultWallet --: recoveryData + addr
+actor -> inputRelayer ++: recoveryData
+
+inputRelayer --> vaultWallet ++: getAddressByRecoveryData()
+vaultWallet --> inputRelayer --: addr'
+inputRelayer --> btc ++: Tracks addr'
+
+== Track deposit ==
+
+actor -> btc : Send X BTC to addr
+
+... Wait for tx confirmations ...
+
+btc --> inputRelayer: TX to addr' found
+inputRelayer --> btcProver ++: compute() TxProof
+inputRelayer <-- btcProver --: PartialComputationsProof
+inputRelayer -> inputRelayer: Sign PartialComputationsProof.computationsResult
+inputRelayer -> btcProver ++: ackTransaction()
+btcProver -> vaultWallet --++: processDeposit(recoveryData)
+vaultWallet -> actor--: Mints X - fee pBTC
+@enduml

@@ -1,0 +1,12 @@
+@startuml Anchor block tracking
+
+entity "Input Relayer" as inputRelayer
+boundary "Bitcoin" as btc
+participant "BitcoinProver" as btcProver
+
+inputRelayer --> btc : Gets anchor blocks metadata
+inputRelayer --> btcProver ++: compute() BlockProof
+inputRelayer <-- btcProver --: PartialComputationsProof
+inputRelayer -> inputRelayer : Signs PartialComputationsProof.computationsResult
+inputRelayer -> btcProver : ackAnchorBlock()
+@enduml
