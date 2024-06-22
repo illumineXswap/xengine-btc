@@ -157,6 +157,7 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
     }
 
     function enrichSigHash(uint256 inputIndex, uint256 count) public virtual onlyRelayer {
+        require(_skeleton.hasSufficientInputs, "IVM");
         require(_skeleton.sigHashes[inputIndex] == bytes32(0), "AH");
         require(!isFinished(), "AF");
 
