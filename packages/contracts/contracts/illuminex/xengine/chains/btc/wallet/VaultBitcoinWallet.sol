@@ -76,7 +76,7 @@ AllowedRelayers
     uint16 public constant BYTES_PER_INCOMING_TRANSFER = 250;
 
     // To cover change output importing fee, tx headers and etc
-    uint16 public constant INPUT_EXTRA_FIXED_BYTES_FEE = 250 + 10;
+    uint16 public constant INPUT_EXTRA_FIXED_BYTES_FEE = 300 + 30;
 
     address public constant REFUEL_VAULT_ADDRESS = address(1);
 
