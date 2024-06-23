@@ -75,6 +75,9 @@ AllowedRelayers
     uint16 public constant BYTES_PER_OUTGOING_TRANSFER = 30;
     uint16 public constant BYTES_PER_INCOMING_TRANSFER = 250;
 
+    // To cover change output importing fee, tx headers and etc
+    uint16 public constant INPUT_EXTRA_FIXED_BYTES_FEE = 250 + 10;
+
     address public constant REFUEL_VAULT_ADDRESS = address(1);
 
     uint64 public satoshiPerByte;
@@ -472,7 +475,7 @@ AllowedRelayers
             protocolFees = 0;
         }
 
-        uint64 importFees = BYTES_PER_INCOMING_TRANSFER * satoshiPerByte;
+        uint64 importFees = ((BYTES_PER_INCOMING_TRANSFER + INPUT_EXTRA_FIXED_BYTES_FEE) * satoshiPerByte);
         protocolFees += importFees;
 
         uint64 valueAfterFees = value - protocolFees;
