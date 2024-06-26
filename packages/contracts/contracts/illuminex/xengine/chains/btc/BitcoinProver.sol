@@ -73,6 +73,10 @@ contract BitcoinProver is Ownable, TEERollup, IBitcoinNetwork, AllowedRelayers {
         _chainParams = _params;
     }
 
+    function updateContractKeys() public onlyOwner {
+        _updateKeyPair();
+    }
+
     function chainParams() public override view returns (ChainParams memory) {
         return _chainParams;
     }
