@@ -310,16 +310,18 @@ AllowedRelayers
         uint256 _index = outboundTransactionsCount;
         require(address(_serializers[_index]) == address(0), "AC");
 
-        (OutgoingQueue.OutgoingTransfer[] memory _transfers,) = queue.popBufferedTransfersToBatch();
-        require(_transfers.length > 0, "NT");
+        bytes32 sliceIndex = queue.popBufferedTransfersToBatch();
 
         TxSerializer _sr = serializerFactory.createSerializer(
             AbstractTxSerializer.FeeConfig({
                 outgoingTransferCost: BYTES_PER_OUTGOING_TRANSFER * satoshiPerByte,
                 incomingTransferCost: BYTES_PER_INCOMING_TRANSFER * satoshiPerByte
             }),
-            _transfers
+            address(queue),
+            sliceIndex
         );
+
+        queue.registerWalker(address(_sr));
 
         _serializers[_index] = _sr;
         _sr.toggleRelayer(msg.sender);

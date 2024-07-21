@@ -19,8 +19,6 @@ contract RefuelTxSerializer is AbstractTxSerializer {
     ) {
         require(_deriveFrom.isFinished());
         derivedFrom = _deriveFrom;
-
-        _copyParentOutputs();
     }
 
     function _isInputAllowed(bytes32 _inputId) internal override view returns (bool) {
@@ -29,12 +27,17 @@ contract RefuelTxSerializer is AbstractTxSerializer {
 
     function _isParentCopied() internal view returns (bool) {
         BitcoinUtils.BitcoinTransaction memory _parentTx = derivedFrom.getBitcoinTransaction();
-        return _skeleton.tx.inputs.length >= _parentTx.inputs.length;
+        return _skeleton.tx.inputs.length >= _parentTx.inputs.length
+            && _skeleton.tx.outputs.length == _parentTx.outputs.length;
     }
 
-    function _copyParentOutputs() internal {
+    function copyParentOutputs(uint256 count) public onlyRelayer {
+        require(!_isParentCopied(), "PAC");
+
         BitcoinUtils.BitcoinTransaction memory _parentTx = derivedFrom.getBitcoinTransaction();
-        for (uint i = 0; i < _parentTx.outputs.length; i++) {
+
+        uint256 _outputsCopied = _skeleton.tx.outputs.length;
+        for (uint i = _outputsCopied; i < _outputsCopied + count; i++) {
             _skeleton.totalTransfersValueWithoutChange += _parentTx.outputs[i].value;
             _skeleton.tx.outputs.push(BitcoinUtils.BitcoinTransactionOutput({
                 value: _parentTx.outputs[i].value,

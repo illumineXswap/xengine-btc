@@ -7,6 +7,7 @@ library TxSerializerLib {
     enum TxSerializingState {
         Headers,
         Inputs,
+        Outputs,
         Finished
     }
 
@@ -28,18 +29,37 @@ library TxSerializerLib {
             _progress.state = TxSerializingState.Inputs;
         }
 
-        // Serialize inputs
-        BitcoinUtils.serializeTransactionInputs(
-            _progress.stream,
-            _tx,
-            _progress.progress,
-            _progress.progress + _count
-        );
+        if (_progress.state == TxSerializingState.Inputs) {
+            // Serialize inputs
+            BitcoinUtils.serializeTransactionInputs(
+                _progress.stream,
+                _tx,
+                _progress.progress,
+                _progress.progress + _count
+            );
 
-        _progress.progress += _count;
-        if (_progress.progress == _tx.inputs.length) {
-            BitcoinUtils.serializeTransactionOutputsAndTail(_progress.stream, _tx);
-            _progress.state = TxSerializingState.Finished;
+            _progress.progress += _count;
+            if (_progress.progress == _tx.inputs.length) {
+                BitcoinUtils.serializeTransactionOutputsHeader(_progress.stream, _tx);
+
+                _progress.state = TxSerializingState.Outputs;
+                _progress.progress = 0;
+            }
+        }
+
+        if (_progress.state == TxSerializingState.Outputs) {
+            BitcoinUtils.serializeTransactionOutputs(
+                _progress.stream,
+                _tx,
+                _progress.progress,
+                _progress.progress + _count
+            );
+
+            _progress.progress += _count;
+            if (_progress.progress == _tx.outputs.length) {
+                BitcoinUtils.serializeTransactionTail(_progress.stream, _tx);
+                _progress.state = TxSerializingState.Finished;
+            }
         }
     }
 }

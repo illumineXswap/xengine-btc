@@ -142,12 +142,20 @@ library BitcoinUtils {
         }
     }
 
-    function serializeTransactionOutputsAndTail(
+    function serializeTransactionOutputsHeader(
         StorageWritableBufferStream.WritableBufferStream storage _buffer,
         BitcoinTransaction storage _tx
     ) external {
         StorageWritableBufferStream.writeVarInt(_buffer, _tx.outputs.length);
-        for (uint i = 0; i < _tx.outputs.length; i++) {
+    }
+
+    function serializeTransactionOutputs(
+        StorageWritableBufferStream.WritableBufferStream storage _buffer,
+        BitcoinTransaction storage _tx,
+        uint256 _from,
+        uint256 _to
+    ) external {
+        for (uint i = _from; i < _to; i++) {
             BitcoinTransactionOutput storage _output = _tx.outputs[i];
 
             StorageWritableBufferStream.writeUint64(_buffer, Endian.reverse64(_output.value));
@@ -155,7 +163,12 @@ library BitcoinUtils {
             StorageWritableBufferStream.writeVarInt(_buffer, _output.script.length);
             StorageWritableBufferStream.write(_buffer, _output.script);
         }
+    }
 
+    function serializeTransactionTail(
+        StorageWritableBufferStream.WritableBufferStream storage _buffer,
+        BitcoinTransaction storage _tx
+    ) external {
         StorageWritableBufferStream.write(_buffer, bytes.concat(bytes4(Endian.reverse32(uint32(_tx.lockTime)))));
     }
 

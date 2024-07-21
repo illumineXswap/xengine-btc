@@ -1,4 +1,4 @@
-import { deployments, ethers } from "hardhat";
+import { deployments, ethers, getChainId } from "hardhat";
 import b58 from "bs58";
 import base58 from "bs58";
 import Vorpal from "vorpal";
@@ -207,24 +207,24 @@ const main = async () => {
 
   const _vault = await deployments.get("VaultBitcoinWallet");
   const wallet = await ethers.getContractAt(
-    "VaultBitcoinWallet",
-    _vault.address,
+      "VaultBitcoinWallet",
+      _vault.address,
   );
 
   const dummyPure = await ethers.getContractAt(
-    "BtcDummyPure",
-    (await deployments.get("BtcDummyPure")).address,
+      "BtcDummyPure",
+      (await deployments.get("BtcDummyPure")).address,
   );
 
   const prover = await ethers.getContractAt(
-    "BitcoinProver",
-    await wallet.prover(),
+      "BitcoinProver",
+      await wallet.prover(),
   );
 
   const computeBlockChunkProof = async (
-    previousProof: FullComputationsProof,
-    blockHeaders: string,
-    anchorIndex: bigint,
+      previousProof: FullComputationsProof,
+      blockHeaders: string,
+      anchorIndex: bigint,
   ): Promise<{
     partialSignature: string;
     rawResult: string;
@@ -233,26 +233,26 @@ const main = async () => {
     const coder = ethers.AbiCoder.defaultAbiCoder();
 
     const rollup0Partialproof = await prover.compute(
-      coder.encode(
-        ["uint8", "bytes"],
-        [
-          0, // ProvingAction.BlockChunk,
-          coder.encode(
-            // @ts-ignore
-            [FULL_COMPUTATIONS_PROOF_TYPE, "bytes", "uint256"],
-            [previousProof, blockHeaders, anchorIndex],
-          ),
-        ],
-      ),
+        coder.encode(
+            ["uint8", "bytes"],
+            [
+              0, // ProvingAction.BlockChunk,
+              coder.encode(
+                  // @ts-ignore
+                  [FULL_COMPUTATIONS_PROOF_TYPE, "bytes", "uint256"],
+                  [previousProof, blockHeaders, anchorIndex],
+              ),
+            ],
+        ),
     );
 
     const [rollup0SerializedEnvelope, rollup0PartialSignature] =
-      rollup0Partialproof;
+        rollup0Partialproof;
 
     const [, rollup0Result] = coder.decode(
-      // @ts-ignore
-      ["uint8", BLOCK_CHUNK_TYPE],
-      rollup0SerializedEnvelope,
+        // @ts-ignore
+        ["uint8", BLOCK_CHUNK_TYPE],
+        rollup0SerializedEnvelope,
     );
 
     return {
@@ -263,9 +263,9 @@ const main = async () => {
   };
 
   const computeChunksForTxProof = async (
-    previousBlocks: string[],
-    confirmationsSubChain: string[],
-    anchor: bigint,
+      previousBlocks: string[],
+      confirmationsSubChain: string[],
+      anchor: bigint,
   ) => {
     let prevRollup = EMPTY_PAST_CHUNK_PROOF;
 
@@ -275,13 +275,13 @@ const main = async () => {
     let i = 0;
     for (const chunk of chunksToProve) {
       const chunkRollup = await computeBlockChunkProof(
-        prevRollup,
-        `0x${chunk.join("")}`,
-        anchor,
+          prevRollup,
+          `0x${chunk.join("")}`,
+          anchor,
       );
 
       console.log(
-        `Proved ${chunk.length} blocks: ${i++} / ${chunksToProve.length}`,
+          `Proved ${chunk.length} blocks: ${i++} / ${chunksToProve.length}`,
       );
 
       prevRollup = {
@@ -296,9 +296,9 @@ const main = async () => {
     }
 
     return computeBlockChunkProof(
-      prevRollup,
-      `0x${confirmationsSubChain.join("")}`,
-      anchor,
+        prevRollup,
+        `0x${confirmationsSubChain.join("")}`,
+        anchor,
     );
   };
 
@@ -336,23 +336,23 @@ const main = async () => {
   };
 
   const try_fetch_range = async (
-    _from: number,
-    _to: number,
+      _from: number,
+      _to: number,
   ): Promise<string[]> => {
     const chunk: Promise<string>[] = [];
     for (let i = _from; i < _to; i++) {
       chunk.push(
-        new Promise(async (resolve, reject) => {
-          try {
-            resolve(
-              await client.getRawBlockHeader(
-                (await client.getBlockByNumber(i)).hash,
-              ),
-            );
-          } catch (err) {
-            reject(err);
-          }
-        }),
+          new Promise(async (resolve, reject) => {
+            try {
+              resolve(
+                  await client.getRawBlockHeader(
+                      (await client.getBlockByNumber(i)).hash,
+                  ),
+              );
+            } catch (err) {
+              reject(err);
+            }
+          }),
       );
     }
 
@@ -379,513 +379,607 @@ const main = async () => {
   });
 
   vorpal
-    .command("prover:admin:set_min", "Set min confirmations")
-    .option("--min <min>", "Min confirmations)")
-    .action(async (args) => {
-      await prover.setMinConfirmations(Number(args.options.min));
-    });
+      .command("prover:admin:set_min", "Set min confirmations")
+      .option("--min <min>", "Min confirmations)")
+      .action(async (args) => {
+        await prover.setMinConfirmations(Number(args.options.min));
+      });
 
   vorpal
-    .command("vault:admin:set_satoshi_per_byte", "Set SPB")
-    .option("--value <value>", "SPB value)")
-    .action(async (args) => {
-      await wallet.setFee(Number(args.options.value));
-    });
+      .command("vault:admin:set_satoshi_per_byte", "Set SPB")
+      .option("--value <value>", "SPB value)")
+      .action(async (args) => {
+        await wallet.setFee(Number(args.options.value));
+      });
 
   vorpal
-    .command("vault:admin:update_pubkey", "Set offchain pubkey")
-    .option("--pubkey <pubkey>", "Offchain public key")
-    .types({ string: ["pubkey"] })
-    .action(async (args) => {
-      await wallet.updateOffchainSignerPubKey(args.options.pubkey);
-    });
+      .command("vault:admin:update_pubkey", "Set offchain pubkey")
+      .option("--pubkey <pubkey>", "Offchain public key")
+      .types({ string: ["pubkey"] })
+      .action(async (args) => {
+        await wallet.updateOffchainSignerPubKey(args.options.pubkey);
+      });
 
   vorpal
-    .command("prover:admin:set_witness", "Set witness pubkey")
-    .option("--pubkey <pubkey>", "Witness pubkey")
-    .types({ string: ["pubkey"] })
-    .action(async (args) => {
-      await prover.toggleWitnessPublicKey(args.options.pubkey);
-    });
+      .command("prover:admin:set_witness", "Set witness pubkey")
+      .option("--pubkey <pubkey>", "Witness pubkey")
+      .types({ string: ["pubkey"] })
+      .action(async (args) => {
+        await prover.toggleWitnessPublicKey(args.options.pubkey);
+      });
 
   vorpal
-    .command("prover:admin:set_min_witness", "Set witness pubkey")
-    .option("--min <min>", "Min")
-    .action(async (args) => {
-      await prover.setMinWitnessConfirmations(args.options.min);
-    });
+      .command("prover:admin:set_min_witness", "Set witness pubkey")
+      .option("--min <min>", "Min")
+      .action(async (args) => {
+        await prover.setMinWitnessConfirmations(args.options.min);
+      });
 
   vorpal
-    .command("vault:withdraw", "Withdraw")
-    .option("--to <to>", "BTC destination address")
-    .option("--amount <amount>", "Sat amount")
-    .action(async (args) => {
-      let dst = null;
-      if (
-        args.options.to.startsWith("bc") ||
-        args.options.to.startsWith("tb")
-      ) {
-        dst = Buffer.from(
-          bech32.fromWords(bech32.decode(args.options.to).words.slice(1)),
+      .command("vault:withdraw", "Withdraw")
+      .option("--to <to>", "BTC destination address")
+      .option("--amount <amount>", "Sat amount")
+      .action(async (args) => {
+        let dst = null;
+        if (
+            args.options.to.startsWith("bc") ||
+            args.options.to.startsWith("tb")
+        ) {
+          dst = Buffer.from(
+              bech32.fromWords(bech32.decode(args.options.to).words.slice(1)),
+          );
+
+          const chainId = await getChainId();
+          const isTestnet = chainId === "23295" || chainId === "23293";
+
+          const prefix = isTestnet ? 0xf1 : 0xf3;
+
+          const hash0 = crypto.createHash("sha256");
+          hash0.update(Buffer.concat([Buffer.from([prefix]), dst]));
+
+          const hash1 = crypto.createHash("sha256");
+          hash1.update(hash0.digest());
+
+          const hashDigest = hash1.digest();
+
+          // Here we support only P2WPKH
+          dst = Buffer.concat([
+            Buffer.from([prefix]),
+            dst,
+            hashDigest.subarray(0, 4),
+          ]);
+        } else {
+          dst = Buffer.from(base58.decode(args.options.to));
+        }
+
+        const idSeed = ethers.randomBytes(32);
+
+        await wallet.withdraw(dst, args.options.amount, 0, idSeed);
+      });
+
+  vorpal
+      .command("vault:push")
+      .option("--inputs <inputs>", "Inputs (tx1:out1,tx2:out2)")
+      .option("--privkey <privkey>", "Signer private key")
+      .types({ string: ["inputs", "privkey"] })
+      .action(async (args) => {
+        const inputs = (args.options.inputs as string)
+            .split(",")
+            .map((input) => input.split(":"));
+
+        const queue = await ethers.getContractAt(
+            "OutgoingQueue",
+            await wallet.queue(),
         );
+        console.log(await queue.nextBatchTime());
 
-        const hash0 = crypto.createHash("sha256");
-        hash0.update(Buffer.concat([Buffer.from([0xf1]), dst]));
+        let tx = await wallet.startOutgoingTxSerializing({
+          gasLimit: 10_000_000,
+        });
+        const r0 = await tx.wait();
 
-        const hash1 = crypto.createHash("sha256");
-        hash1.update(hash0.digest());
+        if (!r0) {
+          throw new Error("Invalid receipt");
+        }
 
-        const hashDigest = hash1.digest();
-
-        // Here we support only P2WPKH
-        dst = Buffer.concat([
-          Buffer.from([0xf1]),
-          dst,
-          hashDigest.subarray(0, 4),
+        const iface = new ethers.Interface([
+          {
+            anonymous: false,
+            inputs: [
+              {
+                indexed: false,
+                internalType: "address",
+                name: "serializer",
+                type: "address",
+              },
+            ],
+            name: "TransactionSerializerCreated",
+            type: "event",
+          },
         ]);
-      } else {
-        dst = Buffer.from(base58.decode(args.options.to));
-      }
 
-      await wallet.withdraw(dst, args.options.amount, 0);
-    });
+        const _log = r0.logs.find((x) => x.topics[0].slice(0, 10) === '0x86861bd8');
 
-  vorpal
-    .command("vault:push")
-    .option("--inputs <inputs>", "Inputs (tx1:out1,tx2:out2)")
-    .option("--privkey <privkey>", "Signer private key")
-    .types({ string: ["inputs", "privkey"] })
-    .action(async (args) => {
-      const inputs = (args.options.inputs as string)
-        .split(",")
-        .map((input) => input.split(":"));
-
-      const queue = await ethers.getContractAt(
-        "OutgoingQueue",
-        await wallet.queue(),
-      );
-      console.log(await queue.nextBatchTime());
-
-      let tx = await wallet.startOutgoingTxSerializing();
-      const r0 = await tx.wait();
-
-      if (!r0) {
-        throw new Error("Invalid receipt");
-      }
-
-      const iface = new ethers.Interface([
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: false,
-              internalType: "address",
-              name: "serializer",
-              type: "address",
-            },
-          ],
-          name: "TransactionSerializerCreated",
-          type: "event",
-        },
-      ]);
-
-      console.log(r0.logs);
-      console.log(iface.parseLog(r0.logs[0]!));
-
-      const serializer = await ethers.getContractAt(
-        "TxSerializer",
-        iface.parseLog(r0.logs[0]!).args[0],
-      );
-
-      await serializer.enrichOutgoingTransaction.staticCallResult(
-        inputs.map((input) => {
-          return ethers.solidityPackedKeccak256(
-            ["bytes32", "uint256"],
-            [`0x${input[0]}`, input[1]],
-          );
-        }),
-      );
-
-      tx = await serializer.enrichOutgoingTransaction(
-        inputs.map((input) => {
-          return ethers.solidityPackedKeccak256(
-            ["bytes32", "uint256"],
-            [`0x${input[0]}`, input[1]],
-          );
-        }),
-      );
-      console.log(await tx.wait());
-
-      for (let i = 0; i < inputs.length; i++) {
-        tx = await serializer.enrichSigHash(i, inputs.length);
-        console.log(await tx.wait());
-      }
-
-      tx = await serializer.partiallySignOutgoingTransaction(inputs.length);
-
-      const receiptPartialSignature = await tx.wait();
-      if (!receiptPartialSignature) {
-        throw new Error("Invalid receipt");
-      }
-
-      console.log(receiptPartialSignature);
-
-      const sigHashes = receiptPartialSignature.logs.map((log) => log.data);
-      if (sigHashes.length === 0) {
-        throw new Error("Invalid sighash array length");
-      }
-
-      console.log(sigHashes);
-
-      const key = Buffer.from(args.options.privkey.slice(2), "hex");
-      const signatures = sigHashes.map((s) => {
-        const { signature } = secp256k1.ecdsaSign(
-          Buffer.from(s.slice(2), "hex"),
-          key,
-        );
-        return `0x${Buffer.from(secp256k1.signatureExport(signature)).toString(
-          "hex",
-        )}`;
-      });
-
-      tx = await serializer.serializeOutgoingTransaction(
-        inputs.length,
-        ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signatures]),
-        {
-          gasLimit: 10_000_000,
-        },
-      );
-      await tx.wait();
-
-      tx = await wallet.finaliseOutgoingTxSerializing();
-      const receipt = await tx.wait();
-      console.log(receipt.logs);
-    });
-
-  vorpal
-    .command("vault:refuel")
-    .option("--inputs <inputs>", "Inputs (tx1:out1,tx2:out2)")
-    .option("--privkey <privkey>", "Signer private key")
-    .option("--txid <txid>", "Tx hash")
-    .types({ string: ["inputs", "privkey", "txid"] })
-    .action(async (args) => {
-      const inputs = (args.options.inputs as string)
-        .split(",")
-        .map((input) => input.split(":"));
-
-      let tx = await wallet.startRefuelTxSerializing(args.options.txid);
-      const r0 = await tx.wait();
-
-      if (!r0) {
-        throw new Error("Invalid receipt");
-      }
-
-      const iface = new ethers.Interface([
-        {
-          anonymous: false,
-          inputs: [
-            {
-              indexed: false,
-              internalType: "address",
-              name: "serializer",
-              type: "address",
-            },
-          ],
-          name: "TransactionSerializerCreated",
-          type: "event",
-        },
-      ]);
-
-      console.log(r0.logs);
-      console.log(iface.parseLog(r0.logs[0]!));
-
-      const serializer = await ethers.getContractAt(
-        "RefuelTxSerializer",
-        iface.parseLog(r0.logs[0]!).args[0],
-      );
-
-      const parentSerializer = await ethers.getContractAt(
-        "TxSerializer",
-        await serializer.derivedFrom(),
-      );
-
-      const parentInputsCount = await parentSerializer.getInputsCount();
-
-      tx = await serializer.copyParentInputs(parentInputsCount);
-      await tx.wait();
-
-      tx = await serializer.enrichOutgoingTransaction(
-        inputs.map((input) => {
-          return ethers.solidityPackedKeccak256(
-            ["bytes32", "uint256"],
-            [`0x${input[0]}`, input[1]],
-          );
-        }),
-      );
-      console.log(await tx.wait());
-
-      for (let i = 0; i < BigInt(inputs.length) + parentInputsCount; i++) {
-        tx = await serializer.enrichSigHash(
-          i,
-          BigInt(inputs.length) + parentInputsCount,
-        );
-        console.log(await tx.wait());
-      }
-
-      await serializer.partiallySignOutgoingTransaction.staticCallResult(
-        BigInt(inputs.length) + parentInputsCount,
-      );
-      tx = await serializer.partiallySignOutgoingTransaction(
-        BigInt(inputs.length) + parentInputsCount,
-      );
-
-      const receiptPartialSignature = await tx.wait();
-      if (!receiptPartialSignature) {
-        throw new Error("Invalid receipt");
-      }
-
-      console.log(receiptPartialSignature);
-
-      const sigHashes = receiptPartialSignature.logs.map((log) => log.data);
-      if (sigHashes.length === 0) {
-        throw new Error("Invalid sighash array length");
-      }
-
-      console.log(sigHashes);
-
-      const key = Buffer.from(args.options.privkey.slice(2), "hex");
-      const signatures = sigHashes.map((s) => {
-        const { signature } = secp256k1.ecdsaSign(
-          Buffer.from(s.slice(2), "hex"),
-          key,
-        );
-        return `0x${Buffer.from(secp256k1.signatureExport(signature)).toString(
-          "hex",
-        )}`;
-      });
-
-      tx = await serializer.serializeOutgoingTransaction(
-        BigInt(inputs.length) + parentInputsCount,
-        ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signatures]),
-        {
-          gasLimit: 10_000_000,
-        },
-      );
-      await tx.wait();
-
-      tx = await wallet.finaliseRefuelTxSerializing(args.options.txid, 0);
-      const receipt = await tx.wait();
-      console.log(receipt.logs);
-
-      // const testResult = await client.testTxInclusion(rawTx.slice(2));
-      // console.log(testResult, rawTx.slice(2));
-    });
-
-  vorpal
-    .command("prover:submit_tx", "Submit tx to wallet")
-    .option("--txid <txid>", "Transaction ID (hash)")
-    .option("--vout <vout>", "Tx out index")
-    .option("--data <data>", "Encrypted order data")
-    .option("--self <self>", "Is it change addr output proving?")
-    .types({ string: ["txid", "data"] })
-    .action(async (args) => {
-      const txInfo = await client.getVerboseTx(args.options.txid);
-      let rawTx = await client.getRawTx(args.options.txid);
-
-      if (txInfo.txid !== txInfo.hash) {
-        // Remove segwit data and flag
-        rawTx = rawTx.slice(0, 8).concat(rawTx.slice(12, rawTx.length));
-
-        const lastVout = txInfo.vout[txInfo.vout.length - 1];
-        const ind =
-          rawTx.indexOf(lastVout.scriptPubKey.hex) +
-          lastVout.scriptPubKey.hex.length;
-        rawTx = rawTx.slice(0, ind).concat(rawTx.slice(rawTx.length - 8));
-      }
-
-      const blockFullInfo = await client.getBlock(txInfo.blockhash, 2);
-      const rawBlock = await client.getRawBlockHeader(blockFullInfo.hash);
-
-      const seedAnchorBlockInfo = await client.getBlock(
-        process.env.DEPLOY_BTC_PROVER_SEED_ANCHOR_BLOCK!,
-        2,
-      );
-
-      const relativeAnchorIndex = Math.floor(
-        (blockFullInfo.height - seedAnchorBlockInfo.height) / 2016,
-      );
-
-      const anchorBlockToStartFrom =
-        await prover.anchorBlocks(relativeAnchorIndex);
-
-      const min = await prover.minConfirmations();
-
-      function sha256(data: Buffer) {
-        return createHash("sha256").update(data).digest();
-      }
-
-      const tree = new MerkleTree(
-        blockFullInfo.tx!.map((tx) => Buffer.from(tx.txid, "hex")),
-        sha256,
-        {
-          isBitcoinTree: true,
-        },
-      );
-
-      let fromBlockHeight = Number(anchorBlockToStartFrom.anchorBlockNumber);
-
-      const STEP = 50;
-
-      const finalHeadersList: string[] = [];
-
-      while (true) {
-        const latestBlock = await client.getLatestBlock();
-        const diff = latestBlock.height - fromBlockHeight;
-
-        const shift = diff > STEP ? STEP : diff;
-        const toBlockHeight = fromBlockHeight + shift;
-
-        console.log(
-          `Downloading blocks: ${fromBlockHeight} / ${blockFullInfo.height + Number(min) + 1}`,
+        const serializer = await ethers.getContractAt(
+            "TxSerializer",
+            iface.parseLog(_log).args[0],
         );
 
-        let blocks: string[] = [];
-        while (blocks.length === 0) {
+        while (true) {
           try {
-            blocks = await try_fetch_range(fromBlockHeight, toBlockHeight);
+            await serializer.copyOutputs.staticCall(1);
+            tx = await serializer.copyOutputs(1);
+            await tx.wait();
           } catch (err) {
             console.log(err);
+            break;
           }
         }
 
-        finalHeadersList.push(...blocks);
-        if (toBlockHeight >= blockFullInfo.height + Number(min) + 1) {
-          break;
-        }
-
-        fromBlockHeight = toBlockHeight;
-      }
-
-      const startBlockIndex = finalHeadersList.indexOf(rawBlock);
-      const confirmationsSubchain = finalHeadersList.slice(
-        startBlockIndex,
-        startBlockIndex + Number(min) + 1,
-      );
-
-      const blockChunkProof = await computeChunksForTxProof(
-        finalHeadersList.slice(0, startBlockIndex),
-        confirmationsSubchain,
-        BigInt(relativeAnchorIndex),
-      );
-
-      const coder = ethers.AbiCoder.defaultAbiCoder();
-
-      const txPartialProof = await prover.compute(
-        coder.encode(
-          ["uint8", "bytes"],
-          [
-            1, // ProvingAction.Transaction,
-            coder.encode(
-              [
-                "bytes",
-                // @ts-ignore
-                MERKLE_PROOFS_NODES_TYPE,
-                "uint256",
-                "bytes",
-                // @ts-ignore
-                FULL_COMPUTATIONS_PROOF_TYPE,
-              ],
-              [
-                `0x${rawTx}`,
-                tree.getProof(Buffer.from(txInfo.txid, "hex")).map((proof) => ({
-                  isLeft: proof.position === "left",
-                  data: `0x${proof.data.toString("hex")}`,
-                })),
-                args.options.vout,
-                `0x${rawBlock}`,
-                {
-                  partialProof: {
-                    contractSignature: blockChunkProof.partialSignature,
-                    computationsResult: blockChunkProof.rawResult,
-                  },
-                  witnessSignatures: [],
-                },
-              ],
-            ),
-          ],
-        ),
-      );
-
-      const tx = await prover.ackTransaction(
-        {
-          partialProof: {
-            contractSignature: txPartialProof.contractSignature,
-            computationsResult: txPartialProof.computationsResult,
-          },
-          witnessSignatures: [],
-        },
-        _vault.address,
-        coder.encode(
-          ["uint8", "bytes"],
-          [args.options.self ? 1 : 0, args.options.data],
-        ),
-      );
-
-      console.log(`Ack tx hash: ${tx.hash}`);
-      const receipt = await tx.wait();
-
-      if (!receipt || receipt.status !== 1) {
-        console.error("Tx failed");
-        return;
-      }
-
-      console.log(`Tx ack successful`);
-    });
-
-  vorpal
-    .command(
-      "vault:order_recover",
-      "Recover BTC deposit address by order recovery data",
-    )
-    .option("--data <data>", "Recovery data")
-    .types({ string: ["data"] })
-    .action(async (args) => {
-      const addressData = await wallet.getAddressByOrderRecoveryData(
-        args.options.data,
-      );
-
-      console.log(b58.encode(Buffer.from(addressData.slice(2), "hex")));
-    });
-
-  vorpal
-    .command("vault:gen_order", "Generate order")
-    .option("--address <address>", "Destination address (EVM)")
-    .types({ string: ["address"] })
-    .action(async (args) => {
-      const addressTo = args.options.address;
-      if (!ethers.isAddress(addressTo)) {
-        console.error(
-          "Invalid address provided. Use as ./btc_cli.ts <address>",
+        await serializer.enrichOutgoingTransaction.staticCallResult(
+            inputs.map((input) => {
+              return ethers.solidityPackedKeccak256(
+                  ["bytes32", "uint256"],
+                  [`0x${input[0]}`, input[1]],
+              );
+            }),
         );
 
-        return;
-      }
+        tx = await serializer.enrichOutgoingTransaction(
+            inputs.map((input) => {
+              return ethers.solidityPackedKeccak256(
+                  ["bytes32", "uint256"],
+                  [`0x${input[0]}`, input[1]],
+              );
+            }),
+        );
+        console.log(await tx.wait());
 
-      const orderData = await wallet.generateOrder(
-        addressTo,
-        ethers.ZeroHash,
-        ethers.randomBytes(32),
-        {
-          gasLimit: 50_000_000,
-        },
-      );
+          for (let i = 0; i < inputs.length; i++) {
+            while (true) {
+              try {
+                await serializer.enrichSigHash.staticCall(i, 1);
 
-      console.log(
-        `Deposit to: ${b58.encode(Buffer.from(orderData.btcAddr.slice(2), "hex"))}`,
-      );
+                tx = await serializer.enrichSigHash(i, 1);
+                console.log(await tx.wait());
+              } catch (err) {
+                console.log(err);
+                break;
+              }
+            }
+          }
 
-      console.log(`Encrypted order data: ${orderData.orderData}`);
-    });
+        console.log(await serializer.partiallySignOutgoingTransaction.staticCallResult(inputs.length));
+        tx = await serializer.partiallySignOutgoingTransaction(inputs.length);
+
+        const receiptPartialSignature = await tx.wait();
+        if (!receiptPartialSignature) {
+          throw new Error("Invalid receipt");
+        }
+
+        console.log(receiptPartialSignature.logs);
+
+        const sigHashes = receiptPartialSignature.logs.map((log) => log.data);
+        if (sigHashes.length === 0) {
+          throw new Error("Invalid sighash array length");
+        }
+
+        console.log(sigHashes);
+
+        const key = Buffer.from(args.options.privkey.slice(2), "hex");
+        const signatures = sigHashes.map((s) => {
+          const { signature } = secp256k1.ecdsaSign(
+              Buffer.from(s.slice(2), "hex"),
+              key,
+          );
+          return `0x${Buffer.from(secp256k1.signatureExport(signature)).toString(
+              "hex",
+          )}`;
+        });
+
+        let c = 0;
+        while (true) {
+          const signaturesSlice = signatures.slice(c, c + 1);
+
+            try {
+                await serializer.serializeOutgoingTransaction.staticCall(
+                    1,
+                    ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signaturesSlice]),
+                    {
+                        gasLimit: 10_000_000,
+                    },
+                );
+            } catch (err) {
+              console.log(err);
+              break;
+            }
+
+            tx = await serializer.serializeOutgoingTransaction(
+                1,
+                ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signaturesSlice]),
+                {
+                    gasLimit: 10_000_000,
+                },
+            );
+            await tx.wait();
+
+            c++;
+        }
+
+        console.log(await wallet.finaliseOutgoingTxSerializing.staticCall());
+        tx = await wallet.finaliseOutgoingTxSerializing();
+        const receipt = await tx.wait();
+        console.log(receipt.logs);
+      });
+
+  vorpal
+      .command("vault:refuel")
+      .option("--inputs <inputs>", "Inputs (tx1:out1,tx2:out2)")
+      .option("--privkey <privkey>", "Signer private key")
+      .option("--txid <txid>", "Tx hash")
+      .types({ string: ["inputs", "privkey", "txid"] })
+      .action(async (args) => {
+        const inputs = (args.options.inputs as string)
+            .split(",")
+            .map((input) => input.split(":"));
+
+        // let tx = await wallet.startRefuelTxSerializing(args.options.txid, {
+        //   gasLimit: 10_000_000,
+        // });
+        // const r0 = await tx.wait();
+        //
+        // if (!r0) {
+        //   throw new Error("Invalid receipt");
+        // }
+        //
+        // const iface = new ethers.Interface([
+        //   {
+        //     anonymous: false,
+        //     inputs: [
+        //       {
+        //         indexed: false,
+        //         internalType: "address",
+        //         name: "serializer",
+        //         type: "address",
+        //       },
+        //     ],
+        //     name: "TransactionSerializerCreated",
+        //     type: "event",
+        //   },
+        // ]);
+        //
+        // const _log = r0.logs.find((x) => x.topics[0].slice(0, 10) === '0x86861bd8');
+
+        const serializer = await ethers.getContractAt(
+            "RefuelTxSerializer",
+            // iface.parseLog(_log).args[0],
+            "0x45a4FFA521A65e9705aA65E072Dc91A6e2293E34"
+        );
+
+        // const parentSerializer = await ethers.getContractAt(
+        //     "TxSerializer",
+        //     await serializer.derivedFrom(),
+        // );
+        //
+        // tx = await serializer.copyParentOutputs(6);
+        // await tx.wait();
+        //
+        // const parentInputsCount = await parentSerializer.getInputsCount();
+        //
+        // tx = await serializer.copyParentInputs(parentInputsCount);
+        // await tx.wait();
+        //
+        // tx = await serializer.enrichOutgoingTransaction(
+        //     inputs.map((input) => {
+        //       return ethers.solidityPackedKeccak256(
+        //           ["bytes32", "uint256"],
+        //           [`0x${input[0]}`, input[1]],
+        //       );
+        //     }),
+        // );
+        // console.log(await tx.wait());
+        //
+        // for (let i = 0; i < BigInt(inputs.length) + parentInputsCount; i++) {
+        //   while (true) {
+        //     try {
+        //       await serializer.enrichSigHash.staticCall(
+        //           i,
+        //           1,
+        //       );
+        //
+        //       tx = await serializer.enrichSigHash(
+        //           i,
+        //           1,
+        //       );
+        //       console.log(await tx.wait());
+        //     } catch (err) {
+        //       console.log(err);
+        //       break;
+        //     }
+        //   }
+        // }
+        //
+        // await serializer.partiallySignOutgoingTransaction.staticCallResult(
+        //     BigInt(inputs.length) + parentInputsCount,
+        // );
+        // tx = await serializer.partiallySignOutgoingTransaction(
+        //     BigInt(inputs.length) + parentInputsCount,
+        // );
+        //
+        // const receiptPartialSignature = await tx.wait();
+        // if (!receiptPartialSignature) {
+        //   throw new Error("Invalid receipt");
+        // }
+        //
+        // console.log(receiptPartialSignature);
+
+        // const sigHashes = receiptPartialSignature.logs.map((log) => log.data);
+        // if (sigHashes.length === 0) {
+        //   throw new Error("Invalid sighash array length");
+        // }
+        //
+        // console.log(sigHashes);
+
+        let tx;
+
+        const sigHashes = [
+          '0xffb602c39232f7fac8d60896efe9adaa423a55702f49739c422038c92b83e100',
+          '0xc09277a26ed1744b7e66769a89db0dacfa7be48ffd0abaca3501d216881da719'
+        ];
+
+        const key = Buffer.from(args.options.privkey.slice(2), "hex");
+        const signatures = sigHashes.map((s) => {
+          const { signature } = secp256k1.ecdsaSign(
+              Buffer.from(s.slice(2), "hex"),
+              key,
+          );
+          return `0x${Buffer.from(secp256k1.signatureExport(signature)).toString(
+              "hex",
+          )}`;
+        });
+
+        let c = 0;
+        while (true) {
+          const signaturesSlice = signatures.slice(c, c + 1);
+
+          try {
+            await serializer.serializeOutgoingTransaction.staticCall(
+                1,
+                ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signaturesSlice]),
+                {
+                  gasLimit: 10_000_000,
+                },
+            );
+          } catch (err) {
+            console.log(err);
+            break;
+          }
+
+          tx = await serializer.serializeOutgoingTransaction(
+              1,
+              ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signaturesSlice]),
+              {
+                gasLimit: 10_000_000,
+              },
+          );
+          await tx.wait();
+
+          c++;
+        }
+
+        tx = await wallet.finaliseRefuelTxSerializing(args.options.txid, 1);
+        const receipt = await tx.wait();
+        console.log(receipt.logs);
+
+        // const testResult = await client.testTxInclusion(rawTx.slice(2));
+        // console.log(testResult, rawTx.slice(2));
+      });
+
+  vorpal
+      .command("prover:submit_tx", "Submit tx to wallet")
+      .option("--txid <txid>", "Transaction ID (hash)")
+      .option("--vout <vout>", "Tx out index")
+      .option("--data <data>", "Encrypted order data")
+      .option("--self <self>", "Is it change addr output proving?")
+      .types({ string: ["txid", "data"] })
+      .action(async (args) => {
+        const txInfo = await client.getVerboseTx(args.options.txid);
+        let rawTx = await client.getRawTx(args.options.txid);
+
+        if (txInfo.txid !== txInfo.hash) {
+          // Remove segwit data and flag
+          rawTx = rawTx.slice(0, 8).concat(rawTx.slice(12, rawTx.length));
+
+          const lastVout = txInfo.vout[txInfo.vout.length - 1];
+          const ind =
+              rawTx.indexOf(lastVout.scriptPubKey.hex) +
+              lastVout.scriptPubKey.hex.length;
+          rawTx = rawTx.slice(0, ind).concat(rawTx.slice(rawTx.length - 8));
+        }
+
+        const blockFullInfo = await client.getBlock(txInfo.blockhash, 2);
+        const rawBlock = await client.getRawBlockHeader(blockFullInfo.hash);
+
+        const seedAnchorBlockInfo = await client.getBlock(
+            process.env.DEPLOY_BTC_PROVER_SEED_ANCHOR_BLOCK!,
+            2,
+        );
+
+        const relativeAnchorIndex = Math.floor(
+            (blockFullInfo.height - seedAnchorBlockInfo.height) / 2016,
+        );
+
+        const anchorBlockToStartFrom =
+            await prover.anchorBlocks(relativeAnchorIndex);
+
+        const min = await prover.minConfirmations();
+
+        function sha256(data: Buffer) {
+          return createHash("sha256").update(data).digest();
+        }
+
+        const tree = new MerkleTree(
+            blockFullInfo.tx!.map((tx) => Buffer.from(tx.txid, "hex")),
+            sha256,
+            {
+              isBitcoinTree: true,
+            },
+        );
+
+        let fromBlockHeight = Number(anchorBlockToStartFrom.anchorBlockNumber);
+
+        const STEP = 50;
+
+        const finalHeadersList: string[] = [];
+
+        while (true) {
+          const latestBlock = await client.getLatestBlock();
+          const diff = latestBlock.height - fromBlockHeight;
+
+          const shift = diff > STEP ? STEP : diff;
+          const toBlockHeight = fromBlockHeight + shift;
+
+          console.log(
+              `Downloading blocks: ${fromBlockHeight} / ${blockFullInfo.height + Number(min) + 1}`,
+          );
+
+          let blocks: string[] = [];
+          while (blocks.length === 0) {
+            try {
+              blocks = await try_fetch_range(fromBlockHeight, toBlockHeight);
+            } catch (err) {
+              console.log(err);
+            }
+          }
+
+          finalHeadersList.push(...blocks);
+          if (toBlockHeight >= blockFullInfo.height + Number(min) + 1) {
+            break;
+          }
+
+          fromBlockHeight = toBlockHeight;
+        }
+
+        const startBlockIndex = finalHeadersList.indexOf(rawBlock);
+        const confirmationsSubchain = finalHeadersList.slice(
+            startBlockIndex,
+            startBlockIndex + Number(min) + 1,
+        );
+
+        const blockChunkProof = await computeChunksForTxProof(
+            finalHeadersList.slice(0, startBlockIndex),
+            confirmationsSubchain,
+            BigInt(relativeAnchorIndex),
+        );
+
+        const coder = ethers.AbiCoder.defaultAbiCoder();
+
+        const txPartialProof = await prover.compute(
+            coder.encode(
+                ["uint8", "bytes"],
+                [
+                  1, // ProvingAction.Transaction,
+                  coder.encode(
+                      [
+                        "bytes",
+                        // @ts-ignore
+                        MERKLE_PROOFS_NODES_TYPE,
+                        "uint256",
+                        "bytes",
+                        // @ts-ignore
+                        FULL_COMPUTATIONS_PROOF_TYPE,
+                      ],
+                      [
+                        `0x${rawTx}`,
+                        tree.getProof(Buffer.from(txInfo.txid, "hex")).map((proof) => ({
+                          isLeft: proof.position === "left",
+                          data: `0x${proof.data.toString("hex")}`,
+                        })),
+                        args.options.vout,
+                        `0x${rawBlock}`,
+                        {
+                          partialProof: {
+                            contractSignature: blockChunkProof.partialSignature,
+                            computationsResult: blockChunkProof.rawResult,
+                          },
+                          witnessSignatures: [],
+                        },
+                      ],
+                  ),
+                ],
+            ),
+        );
+
+        const tx = await prover.ackTransaction(
+            {
+              partialProof: {
+                contractSignature: txPartialProof.contractSignature,
+                computationsResult: txPartialProof.computationsResult,
+              },
+              witnessSignatures: [],
+            },
+            _vault.address,
+            coder.encode(
+                ["uint8", "bytes"],
+                [args.options.self ? 1 : 0, args.options.data],
+            ),
+        );
+
+        console.log(`Ack tx hash: ${tx.hash}`);
+        const receipt = await tx.wait();
+
+        if (!receipt || receipt.status !== 1) {
+          console.error("Tx failed");
+          return;
+        }
+
+        console.log(`Tx ack successful`);
+      });
+
+  vorpal
+      .command(
+          "vault:order_recover",
+          "Recover BTC deposit address by order recovery data",
+      )
+      .option("--data <data>", "Recovery data")
+      .types({ string: ["data"] })
+      .action(async (args) => {
+        const addressData = await wallet.getAddressByOrderRecoveryData(
+            args.options.data,
+        );
+
+        console.log(b58.encode(Buffer.from(addressData.slice(2), "hex")));
+      });
+
+  vorpal
+      .command("vault:gen_order", "Generate order")
+      .option("--address <address>", "Destination address (EVM)")
+      .types({ string: ["address"] })
+      .action(async (args) => {
+        const addressTo = args.options.address;
+        if (!ethers.isAddress(addressTo)) {
+          console.error(
+              "Invalid address provided. Use as ./btc_cli.ts <address>",
+          );
+
+          return;
+        }
+
+        const orderData = await wallet.generateOrder(
+            addressTo,
+            ethers.ZeroHash,
+            ethers.randomBytes(32),
+            {
+              gasLimit: 50_000_000,
+            },
+        );
+
+        console.log(
+            `Deposit to: ${b58.encode(Buffer.from(orderData.btcAddr.slice(2), "hex"))}`,
+        );
+
+        console.log(`Encrypted order data: ${orderData.orderData}`);
+      });
 
   vorpal.delimiter(`Bitcoin CLI> `).show();
 };

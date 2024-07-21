@@ -44,7 +44,7 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
     event PartialInputSignature(bytes32 sigHash);
     event SigHashFormed(bytes32 sigHash);
 
-    uint32 public constant OUTGOING_INPUT_SEQUENCE_NO = 1;
+    uint32 public constant OUTGOING_INPUT_SEQUENCE_NO = 0xFFFFFFFD;
     bytes4 public constant SIGHASH_ALL = 0x01000000;
 
     ITxSecretsStorage public immutable secretsStorage;
@@ -233,6 +233,9 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
 
         if (_skeleton.scriptSigsWritten >= _skeleton.tx.inputs.length) {
             TxSerializerLib.serializeTx(_serializing, _skeleton.tx, count);
+        }
+
+        if (_serializing.state == TxSerializerLib.TxSerializingState.Finished) {
             _skeleton.tx.hash = BitcoinUtils.doubleSha256(_serializing.stream.data);
         }
     }
@@ -280,7 +283,7 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
                     ),
                     abi.encodePacked(_skeleton.sigHashes[i]),
                     "",
-                    _signaturesUnpacked[i]
+                    _signaturesUnpacked[i - _skeleton.scriptSigsWritten]
                 );
             }
         }
