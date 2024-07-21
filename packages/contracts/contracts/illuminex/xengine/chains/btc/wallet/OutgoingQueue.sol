@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-contract OutgoingQueue {
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract OutgoingQueue is Ownable {
     struct OutgoingTransfer {
         bytes lockScript;
         uint64 value;
@@ -15,6 +17,7 @@ contract OutgoingQueue {
 
     event OutgoingTransferCommitted(bytes32 indexed id, bytes lockingScript, uint64 value);
     event OutgoingTransferPopped(bytes32 indexed id);
+    event QueueConfigUpdated(uint256 newInterval, uint256 newTransfersPerBatch);
 
     address public vaultWallet;
     address public immutable initializer;
@@ -32,6 +35,12 @@ contract OutgoingQueue {
 
     constructor() {
         initializer = msg.sender;
+    }
+
+    function updateQueueConfig(uint256 newInterval, uint256 newTransfersPerBatch) public onlyOwner {
+        emit QueueConfigUpdated(newInterval, newTransfersPerBatch);
+        batchingInterval = newInterval;
+        maxTransfersPerBatch = newTransfersPerBatch;
     }
 
     function init(address _vaultWallet) public {
