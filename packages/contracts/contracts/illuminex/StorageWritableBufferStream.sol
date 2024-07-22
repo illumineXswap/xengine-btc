@@ -38,7 +38,7 @@ library StorageWritableBufferStream {
             _write(buffer, bytes.concat(bytes2(Endian.reverse16(uint16(value)))));
         } else if (value >= 65536 && value <= 0xFFFFFFFF) {
             _write(buffer, bytes.concat(bytes1(uint8(0xFE))));
-            _write(buffer, bytes.concat(bytes4(Endian.reverse32(uint16(value)))));
+            _write(buffer, bytes.concat(bytes4(Endian.reverse32(uint32(value)))));
         } else if (value >= 4_294_967_296 && value <= 0xFFFFFFFFFFFFFFFF) {
             _write(buffer, bytes.concat(bytes1(uint8(0xFF))));
             _write(buffer, bytes.concat(bytes8(Endian.reverse64(uint64(value)))));
