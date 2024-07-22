@@ -105,14 +105,16 @@ AllowedRelayers
     uint8 public constant MAX_DEPOSIT_FEE = 10;
     uint8 public constant MAX_WITHDRAWAL_FEE = 10;
     uint64 public constant MAX_DEPOSIT_FIXED_FEE = 7400;
+    uint64 public constant MAX_WITHDRAWAL_FIXED_FEE = 7400;
 
     uint64 public depositFixedFee;
+    uint64 public withdrawalFixedFee;
     uint8 public depositFee = 1;
     uint8 public withdrawalFee = 1;
 
     mapping(address => bool) public isExcludedFromFees;
 
-    event ProtocolFeesUpdate(uint8 depositFee, uint8 withdrawalFee, uint64 depositFixedFee);
+    event ProtocolFeesUpdate(uint8 depositFee, uint8 withdrawalFee, uint64 depositFixedFee, uint64 withdrawalFixedFee);
     event OffchainSignerPubKeyUpdate(bytes pubKey);
 
     uint64 public minWithdrawalLimit = 700;
@@ -159,14 +161,20 @@ AllowedRelayers
         _;
     }
 
-    function setProtocolFees(uint8 _depositFee, uint8 _withdrawalFee, uint64 _depFixedFee) public onlyOwner {
+    function setProtocolFees(
+        uint8 _depositFee,
+        uint8 _withdrawalFee,
+        uint64 _depFixedFee,
+        uint64 _withdrawFixedFee
+    ) public onlyOwner {
         require(_depositFee <= MAX_DEPOSIT_FEE && _withdrawalFee <= MAX_WITHDRAWAL_FEE, "FTH");
-        require(_depFixedFee <= MAX_DEPOSIT_FIXED_FEE, "FFTH");
+        require(_depFixedFee <= MAX_DEPOSIT_FIXED_FEE && _withdrawalFee <= MAX_WITHDRAWAL_FIXED_FEE, "FFTH");
 
-        emit ProtocolFeesUpdate(_depositFee, _withdrawalFee, _depFixedFee);
+        emit ProtocolFeesUpdate(_depositFee, _withdrawalFee, _depFixedFee, _withdrawFixedFee);
         depositFee = _depositFee;
         withdrawalFee = _withdrawalFee;
         depositFixedFee = _depFixedFee;
+        withdrawalFixedFee = _withdrawFixedFee;
     }
 
     function _getOffchainSignerPubKeyByInputId(bytes32 _inputId) private view returns (bytes memory) {
@@ -382,7 +390,7 @@ AllowedRelayers
         uint64 amountAfterNetworkFee = amount - (BYTES_PER_OUTGOING_TRANSFER * satoshiPerByte);
         require(amountAfterNetworkFee >= minWithdrawalLimit, "AFL");
 
-        uint64 protocolFees = amountAfterNetworkFee * withdrawalFee / 1000;
+        uint64 protocolFees = (amountAfterNetworkFee * withdrawalFee / 1000) + withdrawalFixedFee;
         if (isExcludedFromFees[msg.sender]) {
             protocolFees = 0;
         }
