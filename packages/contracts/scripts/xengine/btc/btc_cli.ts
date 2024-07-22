@@ -623,32 +623,32 @@ const main = async () => {
             .split(",")
             .map((input) => input.split(":"));
 
-        // let tx = await wallet.startRefuelTxSerializing(args.options.txid, {
-        //   gasLimit: 10_000_000,
-        // });
-        // const r0 = await tx.wait();
-        //
-        // if (!r0) {
-        //   throw new Error("Invalid receipt");
-        // }
-        //
-        // const iface = new ethers.Interface([
-        //   {
-        //     anonymous: false,
-        //     inputs: [
-        //       {
-        //         indexed: false,
-        //         internalType: "address",
-        //         name: "serializer",
-        //         type: "address",
-        //       },
-        //     ],
-        //     name: "TransactionSerializerCreated",
-        //     type: "event",
-        //   },
-        // ]);
-        //
-        // const _log = r0.logs.find((x) => x.topics[0].slice(0, 10) === '0x86861bd8');
+        let tx = await wallet.startRefuelTxSerializing(args.options.txid, {
+          gasLimit: 10_000_000,
+        });
+        const r0 = await tx.wait();
+
+        if (!r0) {
+          throw new Error("Invalid receipt");
+        }
+
+        const iface = new ethers.Interface([
+          {
+            anonymous: false,
+            inputs: [
+              {
+                indexed: false,
+                internalType: "address",
+                name: "serializer",
+                type: "address",
+              },
+            ],
+            name: "TransactionSerializerCreated",
+            type: "event",
+          },
+        ]);
+
+        const _log = r0.logs.find((x) => x.topics[0].slice(0, 10) === '0x86861bd8');
 
         const serializer = await ethers.getContractAt(
             "RefuelTxSerializer",
@@ -656,76 +656,69 @@ const main = async () => {
             "0x45a4FFA521A65e9705aA65E072Dc91A6e2293E34"
         );
 
-        // const parentSerializer = await ethers.getContractAt(
-        //     "TxSerializer",
-        //     await serializer.derivedFrom(),
-        // );
-        //
-        // tx = await serializer.copyParentOutputs(6);
-        // await tx.wait();
-        //
-        // const parentInputsCount = await parentSerializer.getInputsCount();
-        //
-        // tx = await serializer.copyParentInputs(parentInputsCount);
-        // await tx.wait();
-        //
-        // tx = await serializer.enrichOutgoingTransaction(
-        //     inputs.map((input) => {
-        //       return ethers.solidityPackedKeccak256(
-        //           ["bytes32", "uint256"],
-        //           [`0x${input[0]}`, input[1]],
-        //       );
-        //     }),
-        // );
-        // console.log(await tx.wait());
-        //
-        // for (let i = 0; i < BigInt(inputs.length) + parentInputsCount; i++) {
-        //   while (true) {
-        //     try {
-        //       await serializer.enrichSigHash.staticCall(
-        //           i,
-        //           1,
-        //       );
-        //
-        //       tx = await serializer.enrichSigHash(
-        //           i,
-        //           1,
-        //       );
-        //       console.log(await tx.wait());
-        //     } catch (err) {
-        //       console.log(err);
-        //       break;
-        //     }
-        //   }
-        // }
-        //
-        // await serializer.partiallySignOutgoingTransaction.staticCallResult(
-        //     BigInt(inputs.length) + parentInputsCount,
-        // );
-        // tx = await serializer.partiallySignOutgoingTransaction(
-        //     BigInt(inputs.length) + parentInputsCount,
-        // );
-        //
-        // const receiptPartialSignature = await tx.wait();
-        // if (!receiptPartialSignature) {
-        //   throw new Error("Invalid receipt");
-        // }
-        //
-        // console.log(receiptPartialSignature);
+        const parentSerializer = await ethers.getContractAt(
+            "TxSerializer",
+            await serializer.derivedFrom(),
+        );
 
-        // const sigHashes = receiptPartialSignature.logs.map((log) => log.data);
-        // if (sigHashes.length === 0) {
-        //   throw new Error("Invalid sighash array length");
-        // }
-        //
-        // console.log(sigHashes);
+        tx = await serializer.copyParentOutputs(6);
+        await tx.wait();
 
-        let tx;
+        const parentInputsCount = await parentSerializer.getInputsCount();
 
-        const sigHashes = [
-          '0xffb602c39232f7fac8d60896efe9adaa423a55702f49739c422038c92b83e100',
-          '0xc09277a26ed1744b7e66769a89db0dacfa7be48ffd0abaca3501d216881da719'
-        ];
+        tx = await serializer.copyParentInputs(parentInputsCount);
+        await tx.wait();
+
+        tx = await serializer.enrichOutgoingTransaction(
+            inputs.map((input) => {
+              return ethers.solidityPackedKeccak256(
+                  ["bytes32", "uint256"],
+                  [`0x${input[0]}`, input[1]],
+              );
+            }),
+         );
+         console.log(await tx.wait());
+
+        for (let i = 0; i < BigInt(inputs.length) + parentInputsCount; i++) {
+          while (true) {
+            try {
+              await serializer.enrichSigHash.staticCall(
+                  i,
+                  1,
+              );
+
+              tx = await serializer.enrichSigHash(
+                  i,
+                  1,
+              );
+              console.log(await tx.wait());
+            } catch (err) {
+              console.log(err);
+              break;
+            }
+          }
+        }
+
+        await serializer.partiallySignOutgoingTransaction.staticCallResult(
+            BigInt(inputs.length) + parentInputsCount,
+        );
+        tx = await serializer.partiallySignOutgoingTransaction(
+            BigInt(inputs.length) + parentInputsCount,
+        );
+
+        const receiptPartialSignature = await tx.wait();
+        if (!receiptPartialSignature) {
+          throw new Error("Invalid receipt");
+        }
+
+        console.log(receiptPartialSignature);
+
+        const sigHashes = receiptPartialSignature.logs.map((log) => log.data);
+        if (sigHashes.length === 0) {
+          throw new Error("Invalid sighash array length");
+        }
+
+        console.log(sigHashes);
 
         const key = Buffer.from(args.options.privkey.slice(2), "hex");
         const signatures = sigHashes.map((s) => {
