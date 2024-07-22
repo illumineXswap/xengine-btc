@@ -104,13 +104,15 @@ AllowedRelayers
     // Protocol fees
     uint8 public constant MAX_DEPOSIT_FEE = 10;
     uint8 public constant MAX_WITHDRAWAL_FEE = 10;
+    uint64 public constant MAX_DEPOSIT_FIXED_FEE = 7400;
 
+    uint64 public depositFixedFee;
     uint8 public depositFee = 1;
     uint8 public withdrawalFee = 1;
 
     mapping(address => bool) public isExcludedFromFees;
 
-    event ProtocolFeesUpdate(uint8 depositFee, uint8 withdrawalFee);
+    event ProtocolFeesUpdate(uint8 depositFee, uint8 withdrawalFee, uint64 depositFixedFee);
     event OffchainSignerPubKeyUpdate(bytes pubKey);
 
     uint64 public minWithdrawalLimit = 700;
@@ -157,12 +159,14 @@ AllowedRelayers
         _;
     }
 
-    function setProtocolFees(uint8 _depositFee, uint8 _withdrawalFee) public onlyOwner {
+    function setProtocolFees(uint8 _depositFee, uint8 _withdrawalFee, uint64 _depFixedFee) public onlyOwner {
         require(_depositFee <= MAX_DEPOSIT_FEE && _withdrawalFee <= MAX_WITHDRAWAL_FEE, "FTH");
+        require(_depFixedFee <= MAX_DEPOSIT_FIXED_FEE, "FFTH");
 
-        emit ProtocolFeesUpdate(_depositFee, _withdrawalFee);
+        emit ProtocolFeesUpdate(_depositFee, _withdrawalFee, _depFixedFee);
         depositFee = _depositFee;
         withdrawalFee = _withdrawalFee;
+        depositFixedFee = _depFixedFee;
     }
 
     function _getOffchainSignerPubKeyByInputId(bytes32 _inputId) private view returns (bytes memory) {
@@ -476,6 +480,8 @@ AllowedRelayers
         if (isExcludedFromFees[destination]) {
             protocolFees = 0;
         }
+
+        protocolFees += depositFixedFee;
 
         uint64 importFees = ((BYTES_PER_INCOMING_TRANSFER + INPUT_EXTRA_FIXED_BYTES_FEE) * satoshiPerByte);
         protocolFees += importFees;
