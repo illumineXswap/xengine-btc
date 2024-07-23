@@ -37,6 +37,10 @@ contract OutgoingQueue is Ownable {
         initializer = msg.sender;
     }
 
+    function bufferedTransfersLength() public view returns (uint256) {
+        return bufferedTransfers.length;
+    }
+
     function updateQueueConfig(uint256 newInterval, uint256 newTransfersPerBatch) public onlyOwner {
         emit QueueConfigUpdated(newInterval, newTransfersPerBatch);
         batchingInterval = newInterval;
