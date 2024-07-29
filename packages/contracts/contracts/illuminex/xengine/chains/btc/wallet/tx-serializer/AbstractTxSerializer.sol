@@ -55,6 +55,8 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
     TxSerializerLib.TxSerializingProgress internal _serializing;
     TxSkeleton internal _skeleton;
 
+    uint256 public lastProcessedSigHashInputIndex;
+
     mapping(bytes32 => TxSerializerLib.TxSerializingProgress) internal _sigHashSerializing;
 
     constructor(
@@ -156,10 +158,23 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         }
     }
 
+    function getSigHashSerializingProgress(uint256 sigHashInputIndex) public view returns (
+        TxSerializerLib.TxSerializingState _state,
+        uint256 _progress
+    ) {
+        BitcoinUtils.BitcoinTransactionInput storage _input = _skeleton.tx.inputs[sigHashInputIndex];
+        bytes32 inputId = _inputHash(_input.importTxHash, _input.importTxOut);
+
+        _state = _sigHashSerializing[inputId].state;
+        _progress = _sigHashSerializing[inputId].progress;
+    }
+
     function enrichSigHash(uint256 inputIndex, uint256 count) public virtual onlyRelayer {
         require(_skeleton.hasSufficientInputs, "IVM");
         require(_skeleton.sigHashes[inputIndex] == bytes32(0), "AH");
         require(!isFinished(), "AF");
+
+        lastProcessedSigHashInputIndex = inputIndex;
 
         BitcoinUtils.BitcoinTransactionInput storage _input = _skeleton.tx.inputs[inputIndex];
         bytes32 inputId = _inputHash(_input.importTxHash, _input.importTxOut);
@@ -215,6 +230,10 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         _skeleton.lastPartiallySignedInput = i;
     }
 
+    function getLastPartiallySignedInput() public view returns (uint256) {
+        return _skeleton.lastPartiallySignedInput;
+    }
+
     function serializeOutgoingTransaction(uint256 count, bytes memory signature) public onlyRelayer {
         require(
             _skeleton.tx.hash == bytes32(0)
@@ -238,6 +257,14 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         if (_serializing.state == TxSerializerLib.TxSerializingState.Finished) {
             _skeleton.tx.hash = BitcoinUtils.doubleSha256(_serializing.stream.data);
         }
+    }
+
+    function getSkeletonSerializingProgress() public view returns (
+        TxSerializerLib.TxSerializingState _state,
+        uint256 _progress
+    ) {
+        _state = _serializing.state;
+        _progress = _serializing.progress;
     }
 
     function getRaw() public view returns (bytes memory, bytes32) {
