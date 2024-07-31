@@ -16,13 +16,14 @@ contract TxSerializer is AbstractTxSerializer {
         BitcoinUtils.WorkingScriptSet memory _scripts,
         AbstractTxSerializer.FeeConfig memory _fees,
         address _queue,
-        bytes32 _sliceIndex
+        bytes32 _sliceIndex,
+        address _vaultWallet
     ) AbstractTxSerializer(
     _secretsStorage,
     _inputsStorage,
     _scripts,
     _fees
-    ) {
+    ) AllowedRelayers(_vaultWallet) {
         queue = OutgoingQueue(_queue);
         sliceIndex = _sliceIndex;
     }

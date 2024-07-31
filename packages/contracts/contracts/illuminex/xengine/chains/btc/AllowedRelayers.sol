@@ -4,28 +4,50 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 abstract contract AllowedRelayers is Ownable {
-    mapping(address => bool) public relayers;
-    bool public relayersWhitelistEnabled;
+    mapping(address => bool) internal _relayers;
+    bool internal _relayersWhitelistEnabled;
+
+    AllowedRelayers public immutable parent;
 
     modifier onlyRelayer() {
-        if (relayersWhitelistEnabled && !relayers[msg.sender]) {
+        if (relayersWhitelistEnabled() && !relayers(msg.sender)) {
             revert("NRL");
         }
 
         _;
     }
 
-    constructor() {
-        relayersWhitelistEnabled = true;
-        _toggleRelayer(msg.sender);
+    constructor(address _parent) {
+        parent = AllowedRelayers(_parent);
+
+        if (_parent == address(0)) {
+            _relayersWhitelistEnabled = true;
+            _toggleRelayer(msg.sender);
+        }
+    }
+
+    function relayers(address _relayer) public view returns (bool) {
+        if (address(parent) != address(0)) {
+            return parent.relayers(_relayer);
+        }
+
+        return _relayers[_relayer];
+    }
+
+    function relayersWhitelistEnabled() public view returns (bool) {
+        if (address(parent) != address(0)) {
+            return parent.relayersWhitelistEnabled();
+        }
+
+        return _relayersWhitelistEnabled;
     }
 
     function _toggleRelayer(address _relayer) internal {
-        relayers[_relayer] = !relayers[_relayer];
+        _relayers[_relayer] = !_relayers[_relayer];
     }
 
     function toggleRelayersWhitelistEnabled() public onlyOwner {
-        relayersWhitelistEnabled = !relayersWhitelistEnabled;
+        _relayersWhitelistEnabled = !_relayersWhitelistEnabled;
     }
 
     function toggleRelayer(address _relayer) public onlyOwner {

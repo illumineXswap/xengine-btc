@@ -23,7 +23,8 @@ contract RefuelTxSerializerFactory is AbstractTxSerializerFactory {
         _serializer = new RefuelTxSerializer(
             parent,
             BitcoinUtils.WorkingScriptSet(vaultScript, p2pkhScript, p2wpkhScript, p2shScript, p2wshScript),
-            AbstractTxSerializer.FeeConfig(outgoingTransferCost, incomingTransferCost)
+            AbstractTxSerializer.FeeConfig(outgoingTransferCost, incomingTransferCost),
+            msg.sender
         );
 
         _serializer.transferOwnership(msg.sender);

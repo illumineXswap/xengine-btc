@@ -132,6 +132,7 @@ AllowedRelayers
     )
     BitcoinAbstractWallet(_prover)
     RotatingKeys(keccak256(abi.encodePacked(block.number)), type(VaultBitcoinWallet).name)
+    AllowedRelayers(address(0))
     {
         btcToken = new PeggedBTC();
         queue = OutgoingQueue(_queue);
@@ -295,8 +296,6 @@ AllowedRelayers
         require(outboundTx.txHash != bytes32(0) && outboundTx.finalisedCandidateHash == bytes32(0), "UOT");
 
         RefuelTxSerializer _sr = refuelSerializerFactory.createRefuelSerializer(_serializers[_index]);
-        _sr.toggleRelayer(msg.sender);
-
         _refuelSerializers[_index].push(_sr);
         emit RefuelTxStarted(_index, _refuelSerializers[_index].length - 1);
     }
@@ -336,7 +335,6 @@ AllowedRelayers
         queue.registerWalker(address(_sr));
 
         _serializers[_index] = _sr;
-        _sr.toggleRelayer(msg.sender);
     }
 
     function finaliseOutgoingTxSerializing() public onlyRelayer {

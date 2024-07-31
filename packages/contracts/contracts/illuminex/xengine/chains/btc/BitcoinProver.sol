@@ -67,7 +67,11 @@ contract BitcoinProver is Ownable, TEERollup, IBitcoinNetwork, AllowedRelayers {
     IBitcoinTransactionsVerifier public immutable txVerifier;
     ChainParams private _chainParams;
 
-    constructor(AnchorBlock memory seedAnchorBlock, address _verifier, ChainParams memory _params) {
+    constructor(
+        AnchorBlock memory seedAnchorBlock,
+        address _verifier,
+        ChainParams memory _params
+    ) AllowedRelayers(address(0)) {
         txVerifier = IBitcoinTransactionsVerifier(_verifier);
         _insertAnchorBlock(seedAnchorBlock);
         _chainParams = _params;

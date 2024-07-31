@@ -14,7 +14,7 @@ contract TxSerializerFactory is AbstractTxSerializerFactory {
     ) public returns (TxSerializer _serializer) {
         require(msg.sender == allowedCreator, "NAC");
 
-        _serializer = new TxSerializer(secretsStorage, inputsStorage, scriptSet, _fees, _queue, _sliceIndex);
+        _serializer = new TxSerializer(secretsStorage, inputsStorage, scriptSet, _fees, _queue, _sliceIndex, msg.sender);
         _serializer.transferOwnership(msg.sender);
 
         isDeployedSerializer[address(_serializer)] = true;

@@ -10,13 +10,14 @@ contract RefuelTxSerializer is AbstractTxSerializer {
     constructor(
         TxSerializer _deriveFrom,
         BitcoinUtils.WorkingScriptSet memory _scriptSet,
-        AbstractTxSerializer.FeeConfig memory _fees
+        AbstractTxSerializer.FeeConfig memory _fees,
+        address _vaultWallet
     ) AbstractTxSerializer(
     _deriveFrom.secretsStorage(),
     _deriveFrom.inputsStorage(),
     _scriptSet,
     _fees
-    ) {
+    ) AllowedRelayers(_vaultWallet) {
         require(_deriveFrom.isFinished());
         derivedFrom = _deriveFrom;
     }
