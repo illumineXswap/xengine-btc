@@ -42,6 +42,8 @@ contract OutgoingQueue is Ownable {
     }
 
     function updateQueueConfig(uint256 newInterval, uint256 newTransfersPerBatch) public onlyOwner {
+        require(newInterval <= 900 && newTransfersPerBatch <= 2000, "Limits exceeded");
+
         emit QueueConfigUpdated(newInterval, newTransfersPerBatch);
         batchingInterval = newInterval;
         maxTransfersPerBatch = newTransfersPerBatch;
