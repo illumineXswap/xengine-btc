@@ -258,6 +258,14 @@ AllowedRelayers
         _changeWalletsSecrets.push(_changeSecret);
     }
 
+    function getLastDeployedSerializerAddress() public view returns (address) {
+        if (outboundTransactionsCount == 0) {
+            return address(0);
+        }
+
+        return address(_serializers[outboundTransactionsCount - 1]);
+    }
+
     function _deriveNextChangeSecret(bytes32 _seed) private view returns (bytes32) {
         return keccak256(abi.encodePacked(
             _seed,
