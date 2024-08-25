@@ -259,11 +259,7 @@ AllowedRelayers
     }
 
     function getLastDeployedSerializerAddress() public view returns (address) {
-        if (outboundTransactionsCount == 0) {
-            return address(0);
-        }
-
-        return address(_serializers[outboundTransactionsCount - 1]);
+        return address(_serializers[outboundTransactionsCount]);
     }
 
     function _deriveNextChangeSecret(bytes32 _seed) private view returns (bytes32) {
