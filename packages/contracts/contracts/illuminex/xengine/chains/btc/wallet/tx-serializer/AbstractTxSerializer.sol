@@ -234,7 +234,7 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         return _skeleton.lastPartiallySignedInput;
     }
 
-    function serializeOutgoingTransaction(uint256 count, bytes memory signature) public onlyRelayer {
+    function serializeOutgoingTransaction(uint256 count, bytes[] memory signature) public onlyRelayer {
         require(
             _skeleton.tx.hash == bytes32(0)
             && _skeleton.initialized
@@ -279,10 +279,8 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
 
     function _writeScriptSigs(
         uint256 count,
-        bytes memory _offchainSig
+        bytes[] memory _signaturesUnpacked
     ) internal returns (bool) {
-        (bytes[] memory _signaturesUnpacked) = abi.decode(_offchainSig, (bytes[]));
-
         bool _sigsValid = true;
         for (uint i = _skeleton.scriptSigsWritten; i < _skeleton.scriptSigsWritten + count && _sigsValid; i++) {
             PartiallySignedInput storage _partiallySigned = _skeleton.partiallySignedInputs[i];
