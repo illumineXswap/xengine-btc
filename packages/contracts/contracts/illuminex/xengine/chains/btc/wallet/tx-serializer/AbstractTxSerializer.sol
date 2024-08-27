@@ -277,6 +277,10 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         return (_skeleton.changeSystemIdx, _skeleton.tx.outputs[_idx].value, _idx);
     }
 
+    function getScriptSigsWritten() public view returns (uint256) {
+        return _skeleton.scriptSigsWritten;
+    }
+
     function _writeScriptSigs(
         uint256 count,
         bytes[] memory _signaturesUnpacked
