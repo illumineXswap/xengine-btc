@@ -262,6 +262,19 @@ AllowedRelayers
         return address(_serializers[outboundTransactionsCount]);
     }
 
+    function getCurrentUnfinishedSerializer() public view returns (address) {
+        address _lastDeployedSerializer = getLastDeployedSerializerAddress();
+        if (_lastDeployedSerializer == address(0)) {
+            return address(0);
+        }
+
+        if (TxSerializer(_lastDeployedSerializer).isFinished()) {
+            return address(0);
+        }
+
+        return _lastDeployedSerializer;
+    }
+
     function _deriveNextChangeSecret(bytes32 _seed) private view returns (bytes32) {
         return keccak256(abi.encodePacked(
             _seed,
