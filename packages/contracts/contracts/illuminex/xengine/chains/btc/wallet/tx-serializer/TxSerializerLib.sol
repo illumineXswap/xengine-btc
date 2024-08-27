@@ -30,6 +30,10 @@ library TxSerializerLib {
         }
 
         if (_progress.state == TxSerializingState.Inputs) {
+            if (_progress.progress + _count > _tx.inputs.length) {
+                _count = _tx.inputs.length - _progress.progress;
+            }
+
             // Serialize inputs
             BitcoinUtils.serializeTransactionInputs(
                 _progress.stream,
@@ -48,6 +52,10 @@ library TxSerializerLib {
         }
 
         if (_progress.state == TxSerializingState.Outputs) {
+            if (_progress.progress + _count > _tx.outputs.length) {
+                _count = _tx.outputs.length - _progress.progress;
+            }
+
             BitcoinUtils.serializeTransactionOutputs(
                 _progress.stream,
                 _tx,
