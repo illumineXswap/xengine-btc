@@ -457,6 +457,13 @@ const main = async () => {
         await wallet.withdraw(dst, args.options.amount, 0, idSeed);
       });
 
+  vorpal.command("vault:admin:set_relayer")
+      .option("--address <address>", "Relayer address")
+      .types({ string: ["address"] })
+      .action(async (args) => {
+        await wallet.toggleRelayer(args.options.address);
+      });
+
   vorpal
       .command("vault:push")
       .option("--inputs <inputs>", "Inputs (tx1:out1,tx2:out2)")
