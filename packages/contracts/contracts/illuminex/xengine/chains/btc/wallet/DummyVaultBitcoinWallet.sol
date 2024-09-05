@@ -11,8 +11,17 @@ contract DummyVaultBitcoinWallet is VaultBitcoinWallet {
         BitcoinUtils.WorkingScriptSet memory _scriptSet,
         address _queue,
         TxSerializerFactory _serializerFactory,
-        RefuelTxSerializerFactory _refuelSerializerFactory
-    ) VaultBitcoinWallet(_prover, _offchainSigner, _scriptSet, _queue, _serializerFactory, _refuelSerializerFactory) {
+        RefuelTxSerializerFactory _refuelSerializerFactory,
+        RefundTxSerializerFactory _refundSerializerFactory
+    ) VaultBitcoinWallet(
+        _prover,
+        _offchainSigner,
+        _scriptSet,
+        _queue,
+        _serializerFactory,
+        _refuelSerializerFactory,
+        _refundSerializerFactory
+    ) {
         _ringKeys[0] = seedKey;
     }
 

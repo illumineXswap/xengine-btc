@@ -29,10 +29,10 @@ contract DummyBitcoinWallet is BitcoinAbstractWallet, RotatingKeys {
         bytes memory _btcPubKeyHash,
         bytes memory,
         Transaction memory
-    ) internal virtual override returns (bytes32) {
+    ) internal virtual override returns (bool, bytes32) {
         require(bytes20(_btcPubKeyHash) == TEST_PUBKEY_HASH, "Invalid destination");
         emit DummyDeposit(value, _btcPubKeyHash);
 
-        return bytes32(0);
+        return (true, bytes32(0));
     }
 }

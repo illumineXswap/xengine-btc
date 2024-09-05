@@ -13,4 +13,6 @@ interface ITxInputsStorage {
     function fetchOffchainPubKey(bytes32 inputId) external view returns (bytes memory);
 
     function isRefuelInput(bytes32 inputId) external view returns (bool);
+
+    function isRefundInput(bytes32 inputId) external view returns (bool);
 }

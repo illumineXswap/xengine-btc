@@ -44,7 +44,7 @@ abstract contract BitcoinAbstractWallet is IBitcoinDepositProcessingCallback {
         bytes memory to,
         bytes memory recoveryData,
         Transaction memory _tx
-    ) internal virtual returns (bytes32);
+    ) internal virtual returns (bool, bytes32);
 
     // NOTE: Data for Base58 encoding on the frontend side
     function _generateAddress(bytes20 _dstHash, bytes1 _type) internal pure returns (bytes memory) {
@@ -79,14 +79,15 @@ abstract contract BitcoinAbstractWallet is IBitcoinDepositProcessingCallback {
         }
 
         require(btcAddress.length > 0, "UIS");
-        bytes32 _keyImage = _onDeposit(_scriptId, _tx.transaction.value, btcAddress, _data, _tx);
+        (bool isGlobal, bytes32 _keyImage) = _onDeposit(_scriptId, _tx.transaction.value, btcAddress, _data, _tx);
 
         bytes32 inputHash = _inputHash(_tx.txHash, _tx.txOutIndex);
 
         require(!inputs[inputHash].recorded, "IAA");
         inputs[inputHash] = InputMetadata(true, true, _tx.txHash, _tx.txOutIndex, _keyImage, _tx.transaction.value);
 
-        emit Deposit(inputHash, _tx.transaction.value, _keyImage);
+        if (isGlobal)
+            emit Deposit(inputHash, _tx.transaction.value, _keyImage);
     }
 
     function processDeposit(

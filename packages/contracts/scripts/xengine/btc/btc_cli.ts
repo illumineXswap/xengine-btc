@@ -359,6 +359,42 @@ const main = async () => {
     return Promise.all(chunk);
   };
 
+  const encodeBtcAddress = async (str: string): Buffer => {
+    let dst: Buffer;
+    if (
+        str.startsWith("bc") ||
+        str.startsWith("tb")
+    ) {
+      dst = Buffer.from(
+          bech32.fromWords(bech32.decode(str).words.slice(1)),
+      );
+
+      const chainId = await getChainId();
+      const isTestnet = chainId === "23295" || chainId === "23293";
+
+      const prefix = isTestnet ? 0xf1 : 0xf3;
+
+      const hash0 = crypto.createHash("sha256");
+      hash0.update(Buffer.concat([Buffer.from([prefix]), dst]));
+
+      const hash1 = crypto.createHash("sha256");
+      hash1.update(hash0.digest());
+
+      const hashDigest = hash1.digest();
+
+      // Here we support only P2WPKH
+      dst = Buffer.concat([
+        Buffer.from([prefix]),
+        dst,
+        hashDigest.subarray(0, 4),
+      ]);
+    } else {
+      dst = Buffer.from(base58.decode(str));
+    }
+
+    return dst;
+  }
+
   const vorpal = new Vorpal();
 
   vorpal.command("prover:state", "Show prover state").action(async () => {
@@ -420,37 +456,7 @@ const main = async () => {
       .option("--to <to>", "BTC destination address")
       .option("--amount <amount>", "Sat amount")
       .action(async (args) => {
-        let dst = null;
-        if (
-            args.options.to.startsWith("bc") ||
-            args.options.to.startsWith("tb")
-        ) {
-          dst = Buffer.from(
-              bech32.fromWords(bech32.decode(args.options.to).words.slice(1)),
-          );
-
-          const chainId = await getChainId();
-          const isTestnet = chainId === "23295" || chainId === "23293";
-
-          const prefix = isTestnet ? 0xf1 : 0xf3;
-
-          const hash0 = crypto.createHash("sha256");
-          hash0.update(Buffer.concat([Buffer.from([prefix]), dst]));
-
-          const hash1 = crypto.createHash("sha256");
-          hash1.update(hash0.digest());
-
-          const hashDigest = hash1.digest();
-
-          // Here we support only P2WPKH
-          dst = Buffer.concat([
-            Buffer.from([prefix]),
-            dst,
-            hashDigest.subarray(0, 4),
-          ]);
-        } else {
-          dst = Buffer.from(base58.decode(args.options.to));
-        }
+        const dst = await encodeBtcAddress(args.options.to);
 
         const idSeed = ethers.randomBytes(32);
 
@@ -463,6 +469,81 @@ const main = async () => {
       .action(async (args) => {
         await wallet.toggleRelayer(args.options.address);
       });
+
+  vorpal
+      .command("vault:refund_start")
+      .option("--input <input>", "Input id")
+      .option("--to <to>", "BTC address to refund to")
+      .types({ string: ["input", "to"] })
+      .action(async (args) => {
+        const input = (args.options.input as string).split(":");
+
+        const inputId = ethers.solidityPackedKeccak256(
+            ["bytes32", "uint256"],
+            [`0x${input[0]}`, input[1]],
+        );
+
+        console.log(await wallet.startRefundTxSerializing.staticCall(inputId, await encodeBtcAddress(args.options.to), 10n));
+        const tx = await wallet.startRefundTxSerializing(inputId, await encodeBtcAddress(args.options.to), 10n);
+        const receipt = await tx.wait();
+
+        const _log = receipt.logs.find((x) => x.topics[0].slice(0, 10) === '0x3e1edff3');
+        console.log(_log);
+
+        const iface = new ethers.Interface([
+          {
+            "anonymous": false,
+            "inputs": [
+              {
+                "indexed": false,
+                "internalType": "bytes32",
+                "name": "sigHash",
+                "type": "bytes32"
+              }
+            ],
+            "name": "SigHashFormed",
+            "type": "event"
+          },
+        ]);
+
+        const sigHash = iface.parseLog(_log).args[0];
+        console.log(sigHash);
+      })
+
+  const sc = await ethers.getContractAt("ERC20", "0x438a8D81f338a053964FBd07A1Fa558210c150B4");
+  console.log(await sc.balanceOf("0x7321485eC614729ed127F894276B274CEC21A406"));
+
+  vorpal
+      .command("vault:refund_finish")
+      .option("--input <input>", "Input id")
+      .option("--index <index>", "Refund index")
+      .option("--sighash <sighash>", "Refund sighash")
+      .option("--privkey <privkey>", "Private key")
+      .types({ string: ["input", "sighash", "privkey"] })
+      .action(async (args) => {
+        const input = (args.options.input as string).split(":");
+
+        const inputId = ethers.solidityPackedKeccak256(
+            ["bytes32", "uint256"],
+            [`0x${input[0]}`, input[1]],
+        );
+
+        const key = Buffer.from(args.options.privkey.slice(2), "hex");
+
+        const { signature } = secp256k1.ecdsaSign(
+            Buffer.from(args.options.sighash.slice(2), "hex"),
+            key,
+        );
+
+        const sighex = `0x${Buffer.from(secp256k1.signatureExport(signature)).toString(
+            "hex",
+        )}`;
+
+        const tx = await wallet.finaliseRefundTxSerializing(inputId, args.options.index, sighex);
+        const receipt = await tx.wait();
+
+        console.log(receipt.logs);
+      })
 
   vorpal
       .command("vault:push")
@@ -780,9 +861,20 @@ const main = async () => {
       .option("--txid <txid>", "Transaction ID (hash)")
       .option("--vout <vout>", "Tx out index")
       .option("--data <data>", "Encrypted order data")
-      .option("--self <self>", "Is it change addr output proving?")
-      .types({ string: ["txid", "data"] })
+      .option("--mode <mode>", "Settlement mode")
+      .types({ string: ["txid", "data", "mode"] })
       .action(async (args) => {
+        const modesMap: Record<string, number> = {
+          "deposit": 0,
+          "self": 1,
+          "refund": 2,
+        }
+
+        const modeNum = modesMap[args.options.mode as string];
+        if (modeNum === undefined) {
+          throw new Error("Invalid mode");
+        }
+
         const txInfo = await client.getVerboseTx(args.options.txid);
         let rawTx = await client.getRawTx(args.options.txid);
 
@@ -921,7 +1013,7 @@ const main = async () => {
             _vault.address,
             coder.encode(
                 ["uint8", "bytes"],
-                [args.options.self ? 1 : 0, args.options.data],
+                [modeNum, args.options.data],
             ),
         );
 

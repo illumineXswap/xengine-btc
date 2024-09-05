@@ -23,7 +23,7 @@ contract RefuelTxSerializer is AbstractTxSerializer {
     }
 
     function _isInputAllowed(bytes32 _inputId) internal override view returns (bool) {
-        return inputsStorage.isRefuelInput(_inputId);
+        return inputsStorage.isRefuelInput(_inputId) && !inputsStorage.isRefundInput(_inputId);
     }
 
     function _isParentCopied() internal view returns (bool) {

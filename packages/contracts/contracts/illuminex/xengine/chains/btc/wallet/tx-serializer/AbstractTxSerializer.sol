@@ -139,7 +139,7 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
             + uint64(fees.incomingTransferCost * _skeleton.tx.inputs.length);
     }
 
-    function enrichOutgoingTransaction(bytes32[] memory inputsToSpend) public virtual onlyRelayer {
+    function _enrichOutgoingTransaction(bytes32[] memory inputsToSpend) internal {
         require(!_skeleton.hasSufficientInputs && _skeleton.initialized, "AHS");
         require(!isFinished(), "AF");
 
@@ -158,6 +158,10 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         }
     }
 
+    function enrichOutgoingTransaction(bytes32[] memory inputsToSpend) public virtual onlyRelayer {
+        _enrichOutgoingTransaction(inputsToSpend);
+    }
+
     function getSigHashSerializingProgress(uint256 sigHashInputIndex) public view returns (
         TxSerializerLib.TxSerializingState _state,
         uint256 _progress
@@ -169,7 +173,7 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         _progress = _sigHashSerializing[inputId].progress;
     }
 
-    function enrichSigHash(uint256 inputIndex, uint256 count) public virtual onlyRelayer {
+    function _enrichSigHash(uint256 inputIndex, uint256 count) internal {
         require(_skeleton.hasSufficientInputs, "IVM");
         require(_skeleton.sigHashes[inputIndex] == bytes32(0), "AH");
         require(!isFinished(), "AF");
@@ -200,7 +204,11 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         }
     }
 
-    function partiallySignOutgoingTransaction(uint256 count) public virtual onlyRelayer {
+    function enrichSigHash(uint256 inputIndex, uint256 count) public virtual onlyRelayer {
+        _enrichSigHash(inputIndex, count);
+    }
+
+    function _partiallySignOutgoingTransaction(uint256 count) internal {
         require(
             _skeleton.tx.hash == bytes32(0)
             && _skeleton.initialized
@@ -230,11 +238,15 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         _skeleton.lastPartiallySignedInput = i;
     }
 
+    function partiallySignOutgoingTransaction(uint256 count) public virtual onlyRelayer {
+        _partiallySignOutgoingTransaction(count);
+    }
+
     function getLastPartiallySignedInput() public view returns (uint256) {
         return _skeleton.lastPartiallySignedInput;
     }
 
-    function serializeOutgoingTransaction(uint256 count, bytes[] memory signature) public onlyRelayer {
+    function _serializeOutgoingTransaction(uint256 count, bytes[] memory signature) internal {
         require(
             _skeleton.tx.hash == bytes32(0)
             && _skeleton.initialized
@@ -257,6 +269,10 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         if (_serializing.state == TxSerializerLib.TxSerializingState.Finished) {
             _skeleton.tx.hash = BitcoinUtils.doubleSha256(_serializing.stream.data);
         }
+    }
+
+    function serializeOutgoingTransaction(uint256 count, bytes[] memory signature) public onlyRelayer {
+        _serializeOutgoingTransaction(count, signature);
     }
 
     function getSkeletonSerializingProgress() public view returns (

@@ -37,6 +37,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     refuelTxSerializerFactory.address,
   );
 
+  const refundTxSerializerFactory = await deployments.get(
+      "RefundTxSerializerFactory",
+  );
+  const RefundTxSerialierFactory = await hre.ethers.getContractAt(
+      "RefundTxSerializerFactory",
+      refundTxSerializerFactory.address,
+  );
+
   const scripts = {
     p2shScript: (await deployments.get("ScriptP2SH")).address,
     p2pkhScript: (await deployments.get("ScriptP2PKH")).address,
@@ -59,6 +67,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       outgoingQueue.address,
       txSerializerFactory.address,
       refuelTxSerializerFactory.address,
+      refundTxSerializerFactory.address,
     ],
   });
 
@@ -66,6 +75,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await TxSerialierFactory.init(vaultWallet.address);
   await RefuelTxSerialierFactory.init(vaultWallet.address);
+  await RefundTxSerialierFactory.init(vaultWallet.address);
 };
 
 func.tags = ["BitcoinVaultWallet"];
@@ -81,6 +91,7 @@ func.dependencies = [
   "TxSerializerLib",
   "TxSerializerFactory",
   "RefuelTxSerializerFactory",
+  "RefundTxSerializerFactory"
 ];
 
 export default func;
