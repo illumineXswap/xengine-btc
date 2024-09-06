@@ -510,9 +510,6 @@ const main = async () => {
         console.log(sigHash);
       })
 
-  const sc = await ethers.getContractAt("ERC20", "0x438a8D81f338a053964FBd07A1Fa558210c150B4");
-  console.log(await sc.balanceOf("0x7321485eC614729ed127F894276B274CEC21A406"));
-
   vorpal
       .command("vault:refund_finish")
       .option("--input <input>", "Input id")
