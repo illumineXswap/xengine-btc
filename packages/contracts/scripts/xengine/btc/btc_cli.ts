@@ -470,6 +470,21 @@ const main = async () => {
         await wallet.toggleRelayer(args.options.address);
       });
 
+  vorpal.command("vault:admin:set_aml_fee")
+      .option("--fee <fee>", "AML fee (sats)")
+      .action(async (args) => {
+        const Factory = await ethers.getContractAt("RefundTxSerializerFactory", await wallet.refundSerializerFactory());
+        await Factory.setAmlFees(args.options.fee);
+      });
+
+  vorpal.command("vault:admin:set_aml_locking_script")
+      .option("--script <script>", "AML locking script")
+      .types({ string: ["script"] })
+      .action(async (args) => {
+        const Factory = await ethers.getContractAt("RefundTxSerializerFactory", await wallet.refundSerializerFactory());
+        await Factory.setAmlFeesCollector(args.options.script);
+      });
+
   vorpal
       .command("vault:refund_start")
       .option("--input <input>", "Input id")

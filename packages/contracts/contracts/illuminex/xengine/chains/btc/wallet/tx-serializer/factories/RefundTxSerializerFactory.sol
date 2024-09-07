@@ -4,8 +4,26 @@ pragma solidity ^0.8.0;
 import "../RefundTxSerializer.sol";
 import "./AbstractTxSerializerFactory.sol";
 
-contract RefundTxSerializerFactory is AbstractTxSerializerFactory {
+contract RefundTxSerializerFactory is AbstractTxSerializerFactory, Ownable {
+    bytes1 public constant OP_RETURN = 0x6a;
+
+    bytes public amlFeesCollectorLockScript = bytes.concat(OP_RETURN);
+    uint64 public amlFees;
+
+    event AMLFeesCollectorUpdate(bytes newAddress);
+    event AMLFeesUpdate(uint64 newFees);
+
     constructor(BitcoinUtils.WorkingScriptSet memory _scripts) AbstractTxSerializerFactory(_scripts) {}
+
+    function setAmlFeesCollector(bytes memory _amlFeesCollectorLockScript) public onlyOwner {
+        amlFeesCollectorLockScript = _amlFeesCollectorLockScript;
+        emit AMLFeesCollectorUpdate(_amlFeesCollectorLockScript);
+    }
+
+    function setAmlFees(uint64 _newFees) public onlyOwner {
+        amlFees = _newFees;
+        emit AMLFeesUpdate(_newFees);
+    }
 
     function createRefundSerializer(
         TxSerializer.FeeConfig memory _fees,
@@ -21,7 +39,9 @@ contract RefundTxSerializerFactory is AbstractTxSerializerFactory {
             _fees,
             msg.sender,
             inputId,
-            lockingScript
+            lockingScript,
+            amlFeesCollectorLockScript,
+            amlFees
         );
 
         _serializer.transferOwnership(msg.sender);
