@@ -359,7 +359,7 @@ const main = async () => {
     return Promise.all(chunk);
   };
 
-  const encodeBtcAddress = async (str: string): Buffer => {
+  const encodeBtcAddress = async (str: string) => {
     let dst: Buffer;
     if (
         str.startsWith("bc") ||
@@ -684,7 +684,7 @@ const main = async () => {
             try {
                 await serializer.serializeOutgoingTransaction.staticCall(
                     1,
-                    ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signaturesSlice]),
+                    signaturesSlice,
                     {
                         gasLimit: 10_000_000,
                     },
@@ -696,7 +696,7 @@ const main = async () => {
 
             tx = await serializer.serializeOutgoingTransaction(
                 1,
-                ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signaturesSlice]),
+                signaturesSlice,
                 {
                     gasLimit: 10_000_000,
                 },
@@ -752,8 +752,7 @@ const main = async () => {
 
         const serializer = await ethers.getContractAt(
             "RefuelTxSerializer",
-            // iface.parseLog(_log).args[0],
-            "0x45a4FFA521A65e9705aA65E072Dc91A6e2293E34"
+            iface.parseLog(_log).args[0],
         );
 
         const parentSerializer = await ethers.getContractAt(
@@ -761,7 +760,7 @@ const main = async () => {
             await serializer.derivedFrom(),
         );
 
-        tx = await serializer.copyParentOutputs(6);
+        tx = await serializer.copyParentOutputs(2);
         await tx.wait();
 
         const parentInputsCount = await parentSerializer.getInputsCount();
@@ -838,7 +837,7 @@ const main = async () => {
           try {
             await serializer.serializeOutgoingTransaction.staticCall(
                 1,
-                ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signaturesSlice]),
+                signaturesSlice,
                 {
                   gasLimit: 10_000_000,
                 },
@@ -850,7 +849,7 @@ const main = async () => {
 
           tx = await serializer.serializeOutgoingTransaction(
               1,
-              ethers.AbiCoder.defaultAbiCoder().encode(["bytes[]"], [signaturesSlice]),
+              signaturesSlice,
               {
                 gasLimit: 10_000_000,
               },
@@ -860,7 +859,7 @@ const main = async () => {
           c++;
         }
 
-        tx = await wallet.finaliseRefuelTxSerializing(args.options.txid, 1);
+        tx = await wallet.finaliseRefuelTxSerializing(args.options.txid, 2);
         const receipt = await tx.wait();
         console.log(receipt.logs);
 
