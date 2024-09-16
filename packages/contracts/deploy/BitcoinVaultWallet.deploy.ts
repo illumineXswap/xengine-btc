@@ -1,6 +1,9 @@
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
+import {ethers} from "ethers";
+
+const COMPLIANCE_MANAGER = ethers.ZeroAddress;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployments, getNamedAccounts } = hre;
@@ -68,6 +71,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       txSerializerFactory.address,
       refuelTxSerializerFactory.address,
       refundTxSerializerFactory.address,
+      COMPLIANCE_MANAGER
     ],
   });
 
@@ -91,7 +95,7 @@ func.dependencies = [
   "TxSerializerLib",
   "TxSerializerFactory",
   "RefuelTxSerializerFactory",
-  "RefundTxSerializerFactory"
+  "RefundTxSerializerFactory",
 ];
 
 export default func;

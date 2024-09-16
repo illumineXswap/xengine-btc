@@ -22,6 +22,8 @@ import "./tx-serializer/factories/TxSerializerFactory.sol";
 import "./tx-serializer/factories/RefuelTxSerializerFactory.sol";
 import "./tx-serializer/factories/RefundTxSerializerFactory.sol";
 
+import "../../../../IComplianceManager.sol";
+
 contract VaultBitcoinWallet is
 BitcoinAbstractWallet,
 RotatingKeys,
@@ -71,6 +73,11 @@ AllowedRelayers
     event UpdateFeeSetter(address indexed prevSetter, address indexed newSetter);
     event UpdateMinWithdrawalLimit(uint256 newLimit);
     event FeeSet(uint64 satoshiPerByte);
+
+    event ComplianceRecordLog(bytes vaultScriptHash, bytes32 recordId);
+    event ChangeComplianceManager(address oldManager, address newManager);
+
+    string public constant RECORD_TYPE = "BTC_DEPOSIT";
 
     BitcoinUtils.WorkingScriptSet public workingScriptSet;
 
@@ -137,6 +144,8 @@ AllowedRelayers
     RefuelTxSerializerFactory public immutable refuelSerializerFactory;
     RefundTxSerializerFactory public immutable refundSerializerFactory;
 
+    IComplianceManager public complianceManager;
+
     constructor(
         address _prover,
         bytes memory _offchainSigner,
@@ -144,7 +153,8 @@ AllowedRelayers
         address _queue,
         TxSerializerFactory _serializerFactory,
         RefuelTxSerializerFactory _refuelSerializerFactory,
-        RefundTxSerializerFactory _refundSerializerFactory
+        RefundTxSerializerFactory _refundSerializerFactory,
+        IComplianceManager _cm
     )
     BitcoinAbstractWallet(_prover)
     RotatingKeys(keccak256(abi.encodePacked(block.number)), type(VaultBitcoinWallet).name)
@@ -168,6 +178,7 @@ AllowedRelayers
         serializerFactory = _serializerFactory;
         refuelSerializerFactory = _refuelSerializerFactory;
         refundSerializerFactory = _refundSerializerFactory;
+        complianceManager = _cm;
     }
 
     modifier onlyAuthorisedSerializer() {
@@ -179,6 +190,11 @@ AllowedRelayers
             refundSerializerFactory.isDeployedSerializer(msg.sender),
             "Not a serializer");
         _;
+    }
+
+    function setComplianceManager(address _newCm) public onlyOwner {
+        emit ChangeComplianceManager(address(complianceManager), _newCm);
+        complianceManager = IComplianceManager(_newCm);
     }
 
     function setProtocolFees(
@@ -352,7 +368,6 @@ AllowedRelayers
     function finaliseRefundTxSerializing(bytes32 inputId, uint256 seqId, bytes memory signature) public {
         Refund storage _refund = _refunds[inputId];
         require(_refund.exists, "NE");
-        require(_refund.refundOwner == msg.sender, "NO");
 
         RefundTxSerializer _sr = _refund.serializers[seqId];
         require(!_sr.isFinished(), "IF");
@@ -555,6 +570,11 @@ AllowedRelayers
         );
 
         require(bytes20(_vaultScriptHash) == _keyDataToScriptHash(offchainPubKeyIndex, _keyIndex, keccak256(recoveryData)), "IR");
+
+        if (address(complianceManager) != address(0)) {
+            bytes memory _complianceData = abi.encode(destination, data);
+            emit ComplianceRecordLog(_vaultScriptHash, complianceManager.pushRecord(RECORD_TYPE, _complianceData));
+        }
 
         uint64 protocolFees = value * depositFee / 1000;
         if (isExcludedFromFees[destination]) {
