@@ -211,11 +211,6 @@ const main = async () => {
       _vault.address,
   );
 
-  const dummyPure = await ethers.getContractAt(
-      "BtcDummyPure",
-      (await deployments.get("BtcDummyPure")).address,
-  );
-
   const prover = await ethers.getContractAt(
       "BitcoinProver",
       await wallet.prover(),
@@ -396,6 +391,8 @@ const main = async () => {
   }
 
   const vorpal = new Vorpal();
+
+  console.log(await prover.anchorBlocks(0));
 
   vorpal.command("prover:state", "Show prover state").action(async () => {
     const chainParams = await prover.chainParams();
@@ -1012,6 +1009,21 @@ const main = async () => {
                 ],
             ),
         );
+
+        await prover.ackTransaction.staticCall(
+            {
+              partialProof: {
+                contractSignature: txPartialProof.contractSignature,
+                computationsResult: txPartialProof.computationsResult,
+              },
+              witnessSignatures: [],
+            },
+            _vault.address,
+            coder.encode(
+                ["uint8", "bytes"],
+                [modeNum, args.options.data],
+            ),
+        )
 
         const tx = await prover.ackTransaction(
             {
