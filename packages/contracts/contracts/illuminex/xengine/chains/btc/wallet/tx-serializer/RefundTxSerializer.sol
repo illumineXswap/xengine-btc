@@ -5,8 +5,13 @@ import "./AbstractTxSerializer.sol";
 import "../OutgoingQueue.sol";
 
 contract RefundTxSerializer is AbstractTxSerializer {
+    using Buffer for Buffer.BufferIO;
+
     bytes32 public immutable inputId;
     address public immutable vaultWallet;
+
+    bytes1 public constant OP_RETURN = 0x6a;
+    uint8 public constant MAX_BYTES = 10;
 
     constructor(
         ITxSecretsStorage _secretsStorage,
@@ -40,12 +45,28 @@ contract RefundTxSerializer is AbstractTxSerializer {
                 value: _amlFees,
                 script: _amlFeesLockScript
             }));
+
+            _skeleton.tx.outputs.push(BitcoinUtils.BitcoinTransactionOutput({
+                value: 0,
+                script: _serializeReturn(bytes.concat("AML_REFUND"))
+            }));
         }
 
         inputId = _inputId;
 
         _skeleton.totalTransfersValueWithoutChange = valueToReceive + _amlFees;
         _skeleton.initialized = true;
+    }
+
+    function _serializeReturn(bytes memory memo) private pure returns (bytes memory) {
+        require(memo.length <= MAX_BYTES, "Invalid OP_RETURN length");
+
+        Buffer.BufferIO memory _buffer = Buffer.alloc(2 + memo.length);
+
+        _buffer.write(abi.encodePacked(OP_RETURN));
+        _buffer.write(abi.encodePacked(bytes1(uint8(memo.length)), memo));
+
+        return _buffer.data;
     }
 
     function init() public {
@@ -56,7 +77,7 @@ contract RefundTxSerializer is AbstractTxSerializer {
 
         _enrichOutgoingTransaction(_inputsToSpend);
         _enrichSigHash(0, 1);
-        _enrichSigHash(0, 2);
+        _enrichSigHash(0, 3);
         _partiallySignOutgoingTransaction(1);
     }
 
@@ -67,7 +88,7 @@ contract RefundTxSerializer is AbstractTxSerializer {
         _sigs[0] = signature;
 
         _serializeOutgoingTransaction(1, _sigs);
-        _serializeOutgoingTransaction(2, _sigs);
+        _serializeOutgoingTransaction(3, _sigs);
     }
 
     function _isInputAllowed(bytes32 _inputId) internal override view returns (bool) {
@@ -75,8 +96,9 @@ contract RefundTxSerializer is AbstractTxSerializer {
     }
 
     function _estimateFees() internal virtual override view returns (uint64) {
-        // 1 input, 2 outputs
-        return (uint64(fees.outgoingTransferCost) * 2) + uint64(fees.incomingTransferCost);
+        // 1 input, 3 outputs
+        return (uint64(fees.outgoingTransferCost) * 3)
+            + uint64(fees.incomingTransferCost);
     }
 
     // Do nothing...
