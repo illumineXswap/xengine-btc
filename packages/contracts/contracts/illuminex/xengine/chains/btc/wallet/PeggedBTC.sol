@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./NoEventsERC20.sol";
 
-contract PeggedBTC is ERC20 {
+contract PeggedBTC is NoEventsERC20 {
     address public immutable vaultMinter;
 
-    constructor() ERC20("Bitcoin", "BTC") {
+    constructor() NoEventsERC20("Bitcoin", "BTC", 8) {
         vaultMinter = msg.sender;
     }
 
@@ -18,9 +18,5 @@ contract PeggedBTC is ERC20 {
     function burn(address from, uint256 amount) public {
         require(msg.sender == vaultMinter);
         _burn(from, amount);
-    }
-
-    function decimals() public pure override returns (uint8) {
-        return 8;
     }
 }
