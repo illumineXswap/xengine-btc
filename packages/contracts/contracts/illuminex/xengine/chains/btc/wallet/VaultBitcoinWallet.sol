@@ -3,17 +3,12 @@ pragma solidity ^0.8.0;
 
 import "@oasisprotocol/sapphire-contracts/contracts/Sapphire.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./BitcoinAbstractWallet.sol";
 import "../../../../RotatingKeys.sol";
 import "./PeggedBTC.sol";
 import "./IVaultBitcoinWalletHook.sol";
-
-import "./scripts/ScriptP2SH.sol";
-import "./scripts/ScriptP2PKH.sol";
-import "./scripts/vault/ScriptVault.sol";
-import "./scripts/ScriptP2WPKH.sol";
-import "./scripts/ScriptP2WSH.sol";
 import "./OutgoingQueue.sol";
 
 import "../AllowedRelayers.sol";
@@ -345,10 +340,15 @@ AllowedRelayers
         );
     }
 
-    function startRefundTxSerializing(bytes32 inputId, bytes memory to, uint64 userSatoshiPerByte) public {
+    function startRefundTxSerializing(bytes32 inputId, bytes memory inst, uint64 userSatoshiPerByte) public {
         Refund storage _refund = _refunds[inputId];
         require(_refund.exists, "NE");
-        require(_refund.refundOwner == msg.sender, "NO");
+
+        (bytes memory to, bytes memory sig) = abi.decode(inst, (bytes, bytes));
+        (uint8 v, bytes32 r, bytes32 s) = abi.decode(sig, (uint8, bytes32, bytes32));
+
+        bytes32 _hash = keccak256(abi.encodePacked(inputId, to, userSatoshiPerByte));
+        require(ecrecover(_hash, v, r, s) == _refund.refundOwner, "NO");
 
         RefundTxSerializer _sr = refundSerializerFactory.createRefundSerializer(
             AbstractTxSerializer.FeeConfig({
@@ -548,13 +548,38 @@ AllowedRelayers
         return _generateVaultScriptHashFromSecret(_offchainPubKeyIndex, _getKeyPairSeed(_keyIndex, _userSeed));
     }
 
+    function _ensureValidBtcReceiver(bytes memory _vaultScriptHash, bytes memory _recoveryData) private view returns (
+        uint256,
+        bytes memory,
+        address,
+        bytes memory,
+        uint256
+    ) {
+        (uint256 _keyIndex, bytes memory _encryptedRecoveryData) = abi.decode(_recoveryData, (uint256, bytes));
+        bytes memory recoveryData = _decryptPayload(_keyIndex, _encryptedRecoveryData);
+
+        (uint256 offchainPubKeyIndex,, address destination, bytes memory data) = abi.decode(
+            recoveryData,
+            (uint256, bytes32, address, bytes)
+        );
+
+        require(bytes20(_vaultScriptHash) == _keyDataToScriptHash(offchainPubKeyIndex, _keyIndex, keccak256(recoveryData)), "IR");
+
+        return (_keyIndex, recoveryData, destination, data, offchainPubKeyIndex);
+    }
+
     function _onActionDeposit(
         uint64 value,
         bytes memory _vaultScriptHash,
         bytes memory _recoveryData
     ) internal returns (bytes32) {
-        (uint256 _keyIndex, bytes memory _encryptedRecoveryData) = abi.decode(_recoveryData, (uint256, bytes));
-        bytes memory recoveryData = _decryptPayload(_keyIndex, _encryptedRecoveryData);
+        (
+            uint256 _keyIndex,
+            bytes memory recoveryData,
+            address destination,
+            bytes memory data,
+            uint256 offchainPubKeyIndex
+        ) = _ensureValidBtcReceiver(_vaultScriptHash, _recoveryData);
 
         if (_changeSecretDerivationRoot == bytes32(0)) {
             _changeSecretDerivationRoot = _random(keccak256(
@@ -563,13 +588,6 @@ AllowedRelayers
                 )
             ));
         }
-
-        (uint256 offchainPubKeyIndex,, address destination, bytes memory data) = abi.decode(
-            recoveryData,
-            (uint256, bytes32, address, bytes)
-        );
-
-        require(bytes20(_vaultScriptHash) == _keyDataToScriptHash(offchainPubKeyIndex, _keyIndex, keccak256(recoveryData)), "IR");
 
         if (address(complianceManager) != address(0)) {
             bytes memory _complianceData = abi.encode(destination, data);
@@ -649,16 +667,12 @@ AllowedRelayers
         bytes memory _recoveryData,
         Transaction memory _tx
     ) private returns (bytes32) {
-        (uint256 _keyIndex, bytes memory _encryptedRecoveryData) = abi.decode(_recoveryData, (uint256, bytes));
-        bytes memory recoveryData = _decryptPayload(_keyIndex, _encryptedRecoveryData);
-
-        (uint256 offchainPubKeyIndex,, address destination, bytes memory data) = abi.decode(
-            recoveryData,
-            (uint256, bytes32, address, bytes)
-        );
-
-        require(destination != REFUEL_VAULT_ADDRESS, "CRF");
-        require(bytes20(_vaultScriptHash) == _keyDataToScriptHash(offchainPubKeyIndex, _keyIndex, keccak256(recoveryData)), "IR");
+        (
+            uint256 _keyIndex,
+            bytes memory recoveryData,
+            address destination,
+            bytes memory data,
+        ) = _ensureValidBtcReceiver(_vaultScriptHash, _recoveryData);
 
         bytes32 _inputId = _inputHash(_tx.txHash, _tx.txOutIndex);
         if (hooks[destination]) {
