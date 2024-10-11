@@ -67,7 +67,7 @@ library BitcoinUtils {
 
         LockType _lockingType = LockType.Unknown;
         if (isTestnet) {
-            if (prefix == 0x64) {
+            if (prefix == 0x6F) {
                 _lockingType = LockType.PubKeyHash;
             } else if (prefix == 0xC4) {
                 _lockingType = LockType.ScriptHash;
