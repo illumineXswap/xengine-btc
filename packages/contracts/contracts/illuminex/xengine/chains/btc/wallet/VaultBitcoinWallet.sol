@@ -88,7 +88,7 @@ AllowedRelayers
     PeggedBTC public immutable btcToken;
 
     // BTC network fees
-    uint16 public constant BYTES_PER_OUTGOING_TRANSFER = 30;
+    uint16 public constant BYTES_PER_OUTGOING_TRANSFER = 30 + 250;
     uint16 public constant BYTES_PER_INCOMING_TRANSFER = 250;
 
     // To cover change output importing fee, tx headers and etc
