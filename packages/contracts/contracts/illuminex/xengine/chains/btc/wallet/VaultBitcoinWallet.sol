@@ -351,10 +351,7 @@ AllowedRelayers
         require(ecrecover(_hash, v, r, s) == _refund.refundOwner, "NO");
 
         RefundTxSerializer _sr = refundSerializerFactory.createRefundSerializer(
-            AbstractTxSerializer.FeeConfig({
-                outgoingTransferCost: BYTES_PER_OUTGOING_TRANSFER * userSatoshiPerByte,
-                incomingTransferCost: BYTES_PER_INCOMING_TRANSFER * userSatoshiPerByte
-            }),
+            _getFees(userSatoshiPerByte),
             inputId,
             BitcoinUtils.resolveLockingScript(to, _isTestnet(), workingScriptSet)
         );
@@ -378,11 +375,17 @@ AllowedRelayers
         emit RefundTxBroadcast(inputId, txHash, txData);
     }
 
-    function startRefuelTxSerializing(bytes32 outgoingTxHash) public onlyRelayer {
+    function _getOutboundTx(bytes32 outgoingTxHash) private view returns (uint256, OutboundTransaction storage) {
         uint256 _index = _outboundTxHashToId[outgoingTxHash];
 
         OutboundTransaction storage outboundTx = outboundTransactions[_index];
         require(outboundTx.txHash != bytes32(0) && outboundTx.finalisedCandidateHash == bytes32(0), "UOT");
+
+        return (_index, outboundTx);
+    }
+
+    function startRefuelTxSerializing(bytes32 outgoingTxHash) public onlyRelayer {
+        (uint256 _index,) = _getOutboundTx(outgoingTxHash);
 
         RefuelTxSerializer _sr = refuelSerializerFactory.createRefuelSerializer(_serializers[_index]);
         _refuelSerializers[_index].push(_sr);
@@ -390,10 +393,7 @@ AllowedRelayers
     }
 
     function finaliseRefuelTxSerializing(bytes32 outgoingTxHash, uint256 refuelTxId) public onlyRelayer {
-        uint256 _index = _outboundTxHashToId[outgoingTxHash];
-
-        OutboundTransaction storage outboundTx = outboundTransactions[_index];
-        require(outboundTx.txHash != bytes32(0) && outboundTx.finalisedCandidateHash == bytes32(0), "UOT");
+        (uint256 _index, OutboundTransaction storage outboundTx) = _getOutboundTx(outgoingTxHash);
 
         RefuelTxSerializer _sr = _refuelSerializers[_index][refuelTxId];
 
@@ -406,6 +406,13 @@ AllowedRelayers
         _outboundTxHashToId[txHash] = _index;
     }
 
+    function _getFees(uint64 _satoshiPerByte) internal pure returns (AbstractTxSerializer.FeeConfig memory) {
+        return AbstractTxSerializer.FeeConfig({
+            outgoingTransferCost: BYTES_PER_OUTGOING_TRANSFER * _satoshiPerByte,
+            incomingTransferCost: BYTES_PER_INCOMING_TRANSFER * _satoshiPerByte
+        });
+    }
+
     function startOutgoingTxSerializing() public onlyRelayer {
         uint256 _index = outboundTransactionsCount;
         require(address(_serializers[_index]) == address(0), "AC");
@@ -413,10 +420,7 @@ AllowedRelayers
         bytes32 sliceIndex = queue.popBufferedTransfersToBatch();
 
         TxSerializer _sr = serializerFactory.createSerializer(
-            AbstractTxSerializer.FeeConfig({
-                outgoingTransferCost: BYTES_PER_OUTGOING_TRANSFER * satoshiPerByte,
-                incomingTransferCost: BYTES_PER_INCOMING_TRANSFER * satoshiPerByte
-            }),
+            _getFees(satoshiPerByte),
             address(queue),
             sliceIndex
         );

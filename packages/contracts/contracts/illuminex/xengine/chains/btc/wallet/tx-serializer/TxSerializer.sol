@@ -9,6 +9,9 @@ contract TxSerializer is AbstractTxSerializer {
     OutgoingQueue public immutable queue;
 
     uint256 public lastCopiedOutputIndex;
+    bool public inConsolidationMode;
+
+    bytes1 public constant OP_RETURN = 0x6a;
 
     constructor(
         ITxSecretsStorage _secretsStorage,
@@ -28,6 +31,14 @@ contract TxSerializer is AbstractTxSerializer {
         sliceIndex = _sliceIndex;
     }
 
+    function _isEnrichmentExtraConditionMet() internal virtual override view returns (bool) {
+        if (inConsolidationMode) {
+            return _skeleton.tx.inputs.length >= MAX_INPUTS_PER_TX / 2;
+        }
+
+        return true;
+    }
+
     function _isInputAllowed(bytes32 _inputId) internal override view returns (bool) {
         return !inputsStorage.isRefuelInput(_inputId) && !inputsStorage.isRefundInput(_inputId);
     }
@@ -35,7 +46,9 @@ contract TxSerializer is AbstractTxSerializer {
     function copyOutputs(uint256 count) public onlyRelayer {
         require(!_skeleton.initialized, "INIT_ERR");
 
-        (uint256 _start, uint256 _end) = queue.slices(sliceIndex);
+        (uint256 _start, uint256 _end, bool _isConsolidation) = queue.slices(sliceIndex);
+        inConsolidationMode = _isConsolidation;
+
         OutgoingQueue.OutgoingTransfer[] memory _transfers = queue.walk(
             sliceIndex,
             lastCopiedOutputIndex,

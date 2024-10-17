@@ -141,6 +141,10 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
             + uint64(fees.incomingTransferCost * _skeleton.tx.inputs.length);
     }
 
+    function _isEnrichmentExtraConditionMet() internal virtual view returns (bool) {
+        return true;
+    }
+
     function _enrichOutgoingTransaction(bytes32[] memory inputsToSpend) internal {
         require(!_skeleton.hasSufficientInputs && _skeleton.initialized, "AHS");
         require(!isFinished(), "AF");
@@ -154,7 +158,10 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         }
 
         uint64 _netFee = _estimateFees();
-        if (_skeleton.totalValueImported >= _skeleton.totalTransfersValueWithoutChange + _netFee) {
+        if (
+            _skeleton.totalValueImported >= _skeleton.totalTransfersValueWithoutChange + _netFee
+            && _isEnrichmentExtraConditionMet()
+        ) {
             _addChangeOutput(_netFee);
             _skeleton.hasSufficientInputs = true;
         }

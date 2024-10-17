@@ -23,6 +23,8 @@ abstract contract BitcoinAbstractWallet is IBitcoinDepositProcessingCallback {
 
     mapping(bytes32 => InputMetadata) public inputs;
 
+    uint256 public unspentInputsCount;
+
     event Deposit(bytes32 indexed inputHash, uint64 value, bytes32 indexed keyImage);
     event Spent(bytes32 indexed inputHash);
 
@@ -65,6 +67,8 @@ abstract contract BitcoinAbstractWallet is IBitcoinDepositProcessingCallback {
 
         input.spendable = false;
         emit Spent(_input);
+
+        unspentInputsCount--;
     }
 
     function _processDeposit(Transaction memory _tx, bytes memory _data) internal {
@@ -86,8 +90,10 @@ abstract contract BitcoinAbstractWallet is IBitcoinDepositProcessingCallback {
         require(!inputs[inputHash].recorded, "IAA");
         inputs[inputHash] = InputMetadata(true, true, _tx.txHash, _tx.txOutIndex, _keyImage, _tx.transaction.value);
 
-        if (isGlobal)
+        if (isGlobal) {
+            unspentInputsCount++;
             emit Deposit(inputHash, _tx.transaction.value, _keyImage);
+        }
     }
 
     function processDeposit(

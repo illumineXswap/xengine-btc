@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "./BitcoinAbstractWallet.sol";
+
 contract OutgoingQueue is Ownable {
     struct OutgoingTransfer {
         bytes lockScript;
@@ -13,11 +15,16 @@ contract OutgoingQueue is Ownable {
     struct TransfersSlice {
         uint256 start;
         uint256 end;
+        bool isConsolidation;
     }
 
     event OutgoingTransferCommitted(bytes32 indexed id, bytes lockingScript, uint64 value);
+    event ConsolidationCommitted(bytes32 indexed id);
     event OutgoingTransferPopped(bytes32 indexed id);
     event QueueConfigUpdated(uint256 newInterval, uint256 newTransfersPerBatch);
+
+    uint256 public constant INPUTS_CONSOLIDATION_THRESHOLD = 80;
+    bytes1 public constant OP_RETURN = 0x6a;
 
     address public vaultWallet;
     address public immutable initializer;
@@ -83,6 +90,23 @@ contract OutgoingQueue is Ownable {
         return _transfers;
     }
 
+    function _commitConsolidation(bytes32 _idEntropy) private {
+        OutgoingTransfer memory _transfer = OutgoingTransfer({
+            id: keccak256(abi.encodePacked(block.number, _idEntropy)),
+            value: 0,
+            lockScript: abi.encodePacked(OP_RETURN, abi.encodePacked(bytes1(uint8(1)), bytes1(0x22)))
+        });
+
+        bufferedTransfers.push(_transfer);
+        emit OutgoingTransferCommitted(_transfer.id, _transfer.lockScript, _transfer.value);
+        emit ConsolidationCommitted(_transfer.id);
+
+        // Swap-and-emplace consolidation
+        OutgoingTransfer memory _currentHead = bufferedTransfers[bufferedTransfersCheckpoint];
+        bufferedTransfers[bufferedTransfersCheckpoint] = _transfer;
+        bufferedTransfers[bufferedTransfers.length - 1] = _currentHead;
+    }
+
     function popBufferedTransfersToBatch() public returns (bytes32 sliceIndex) {
         require(msg.sender == vaultWallet);
         require(hasEnoughBufferedTransfersToBatch(), "NET");
@@ -90,12 +114,20 @@ contract OutgoingQueue is Ownable {
         uint _size = bufferedTransfers.length - bufferedTransfersCheckpoint;
         uint _take = _size > maxTransfersPerBatch ? maxTransfersPerBatch : _size;
 
+        uint256 unspentCapacity = BitcoinAbstractWallet(vaultWallet).unspentInputsCount();
+        bool isConsolidation = unspentCapacity >= INPUTS_CONSOLIDATION_THRESHOLD;
+
+        if (isConsolidation) {
+            _commitConsolidation(keccak256(abi.encodePacked(unspentCapacity)));
+            _take = 1;
+        }
+
         uint _from = bufferedTransfersCheckpoint;
         uint _to = bufferedTransfersCheckpoint + _take;
 
         bytes32 _sliceIndex = keccak256(abi.encodePacked(_from, _to));
 
-        slices[_sliceIndex] = TransfersSlice(_from, _to);
+        slices[_sliceIndex] = TransfersSlice(_from, _to, isConsolidation);
         sliceExists[_sliceIndex] = true;
 
         nextBatchTime = block.timestamp + batchingInterval;
