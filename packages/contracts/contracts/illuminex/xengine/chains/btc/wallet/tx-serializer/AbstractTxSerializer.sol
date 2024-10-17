@@ -44,6 +44,8 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
     event PartialInputSignature(bytes32 sigHash);
     event SigHashFormed(bytes32 sigHash);
 
+    uint256 public constant MAX_INPUTS_PER_TX = 160;
+
     uint32 public constant OUTGOING_INPUT_SEQUENCE_NO = 0xFFFFFFFD;
     bytes4 public constant SIGHASH_ALL = 0x01000000;
 
@@ -155,6 +157,11 @@ abstract contract AbstractTxSerializer is AllowedRelayers {
         if (_skeleton.totalValueImported >= _skeleton.totalTransfersValueWithoutChange + _netFee) {
             _addChangeOutput(_netFee);
             _skeleton.hasSufficientInputs = true;
+        }
+
+        require(_skeleton.tx.inputs.length <= MAX_INPUTS_PER_TX, "LEXC");
+        if (_skeleton.tx.inputs.length == MAX_INPUTS_PER_TX) {
+            require(_skeleton.hasSufficientInputs, "FTFL");
         }
     }
 
