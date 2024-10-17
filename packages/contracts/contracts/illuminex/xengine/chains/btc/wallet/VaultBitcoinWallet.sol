@@ -292,12 +292,8 @@ AllowedRelayers
         _changeWalletsSecrets.push(_changeSecret);
     }
 
-    function getLastDeployedSerializerAddress() public view returns (address) {
-        return address(_serializers[outboundTransactionsCount]);
-    }
-
     function getCurrentUnfinishedSerializer() public view returns (address) {
-        address _lastDeployedSerializer = getLastDeployedSerializerAddress();
+        address _lastDeployedSerializer =  address(_serializers[outboundTransactionsCount]);
         if (_lastDeployedSerializer == address(0)) {
             return address(0);
         }
@@ -576,7 +572,7 @@ AllowedRelayers
         uint64 value,
         bytes memory _vaultScriptHash,
         bytes memory _recoveryData
-    ) internal returns (bytes32) {
+    ) internal returns (bool, bytes32) {
         (
             uint256 _keyIndex,
             bytes memory recoveryData,
@@ -623,10 +619,6 @@ AllowedRelayers
         bytes32 _keyImage = keccak256(abi.encodePacked(_secret));
         _secrets[_keyImage] = _secret;
 
-        if (destination == REFUEL_VAULT_ADDRESS) {
-            _isRefuelInputSecret[_keyImage] = true;
-        }
-
         _inputKeyImageToOffchainSignerPubKeyIndex[_keyImage] = offchainPubKeyIndex;
 
         _updateKey(keccak256(abi.encodePacked(
@@ -636,7 +628,11 @@ AllowedRelayers
             block.number
         )));
 
-        return _keyImage;
+        if (destination == REFUEL_VAULT_ADDRESS) {
+            _isRefuelInputSecret[_keyImage] = true;
+        }
+
+        return (destination != REFUEL_VAULT_ADDRESS, _keyImage);
     }
 
     function _onActionOutbound(
@@ -704,7 +700,7 @@ AllowedRelayers
         (VaultTransactionType _type, bytes memory _data) = abi.decode(_recoveryData, (VaultTransactionType, bytes));
 
         if (_type == VaultTransactionType.Deposit) {
-            return (true, _onActionDeposit(value, _vaultScriptHash, _data));
+            return _onActionDeposit(value, _vaultScriptHash, _data);
         } else if (_type == VaultTransactionType.Outbound) {
             return (true, _onActionOutbound(value, _vaultScriptHash, _tx));
         } else if (_type == VaultTransactionType.Refund) {
