@@ -67,8 +67,6 @@ abstract contract BitcoinAbstractWallet is IBitcoinDepositProcessingCallback {
 
         input.spendable = false;
         emit Spent(_input);
-
-        unspentInputsCount--;
     }
 
     function _processDeposit(Transaction memory _tx, bytes memory _data) internal {

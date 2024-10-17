@@ -245,6 +245,7 @@ AllowedRelayers
 
     function spendInput(bytes32 inputId) public override onlyAuthorisedSerializer {
         if (!isRefundInput(inputId)) _spend(inputId);
+        if (!isRefundInput(inputId) && !isRefuelInput(inputId)) unspentInputsCount--;
     }
 
     function fetchInput(bytes32 inputId) public view override returns (
