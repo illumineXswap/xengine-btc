@@ -88,7 +88,7 @@ AllowedRelayers
     PeggedBTC public immutable btcToken;
 
     // BTC network fees
-    uint16 public constant BYTES_PER_OUTGOING_TRANSFER = 30 + 250;
+    uint16 public constant BYTES_PER_OUTGOING_TRANSFER = 30;
     uint16 public constant BYTES_PER_INCOMING_TRANSFER = 250;
 
     // To cover change output importing fee, tx headers and etc
@@ -480,7 +480,8 @@ AllowedRelayers
     }
 
     function withdraw(bytes memory to, uint64 amount, uint64 minReceiveAmount, bytes32 idSeed) public {
-        uint64 amountAfterNetworkFee = amount - (BYTES_PER_OUTGOING_TRANSFER * satoshiPerByte);
+        // 280 = Input importing fee + output fee. Needed to cover potential change import
+        uint64 amountAfterNetworkFee = amount - (280 * satoshiPerByte);
         require(amountAfterNetworkFee >= minWithdrawalLimit, "AFL");
 
         uint64 protocolFees = (amountAfterNetworkFee * withdrawalFee / 1000) + withdrawalFixedFee;
