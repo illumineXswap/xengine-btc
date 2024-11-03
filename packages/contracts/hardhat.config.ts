@@ -4,6 +4,7 @@ import "hardhat-deploy";
 import "@oasisprotocol/sapphire-hardhat";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-abi-exporter";
+import "@nomicfoundation/hardhat-verify";
 
 import * as dotenv from "dotenv";
 
@@ -22,6 +23,9 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  sourcify: {
+    enabled: true
   },
   networks: {
     eth: {
